@@ -60,7 +60,11 @@ impl JobStore {
             .iter_mut()
             .find(|job| job.id == id)
             .ok_or_else(|| "Job not found".to_string())?;
-        job.status = if success {\n            JobStatus::Succeeded\n        } else {\n            JobStatus::Failed\n        };
+        job.status = if success {
+            JobStatus::Succeeded
+        } else {
+            JobStatus::Failed
+        };
         job.finished_ms = Some(now_ms());
         job.summary = Some(summary);
         self.persist()
