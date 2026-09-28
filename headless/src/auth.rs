@@ -49,8 +49,7 @@ pub fn verify_bearer(
     let payload = URL_SAFE_NO_PAD
         .decode(encoded)
         .map_err(|_| "malformed claims")?;
-    let claims: TokenClaims =
-        serde_json::from_slice(&payload).map_err(|_| "malformed claims")?;
+    let claims: TokenClaims = serde_json::from_slice(&payload).map_err(|_| "malformed claims")?;
     validate_claims(&claims, now, server)?;
     Ok(claims)
 }
