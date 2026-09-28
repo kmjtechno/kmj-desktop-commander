@@ -6,7 +6,9 @@ KMJ Desktop Commander is a local-first engineering command center for operating 
 
 ## Infrastructure rule
 
-Project files, terminals, tests, builds, Git operations, AI context and remote execution stay on the customer device or customer-controlled server by default. KMJ Main Platform handles only account identity, signed entitlements, release metadata, billing state, abuse controls and coarse anonymous product metrics when the user has opted in.
+KMJ Desktop Commander MUST NOT require or provision a separate KMJ application server. Its commercial control-plane is colocated with the existing KMJ Main Platform on the same primary server/VPS. No parallel Commander backend stack, duplicate database tier, dedicated licensing server, or always-on relay is introduced by default.
+
+Project files, terminals, tests, builds, Git operations, AI context and remote execution stay on the customer device or customer-controlled server by default. KMJ Main Platform, running on that same shared primary server, handles only account identity, signed entitlements, release metadata, billing state, abuse controls and coarse anonymous product metrics when the user has opted in. Commander routes ordinary work away from KMJ infrastructure so adding Commander customers should increase control-plane traffic only marginally.
 
 The desktop app must never call KMJ infrastructure per shell command. Commercial entitlements are signed by KMJ Main Platform and verified locally with Ed25519. The public bootstrap is cached client-side and refreshes no more than roughly once per 24–30 hours under normal use; refresh jitter prevents synchronized client bursts. Signed commercial entitlements target a seven-day refresh cadence, with a bounded offline grace state so temporary KMJ Platform/network outages do not stop normal recovery work. Revocation and critical-security refreshes may shorten that window. There is no idle heartbeat or command-by-command licensing telemetry.
 
