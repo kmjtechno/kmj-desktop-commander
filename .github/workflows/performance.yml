@@ -76,7 +76,8 @@ jobs:
       - name: Measure pinned baseline on same runner
         working-directory: baseline-src
         run: |
-          python3 scripts/perf/linux-harness.py \
+          python3 "$GITHUB_WORKSPACE/scripts/perf/linux-harness.py" \
+            --config "$GITHUB_WORKSPACE/performance-budgets.json" \
             --binary src-tauri/target/release/kmj-desktop-commander \
             --bundle-dir src-tauri/target/release/bundle \
             --output-dir "$GITHUB_WORKSPACE/performance-artifacts/baseline"
