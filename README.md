@@ -181,6 +181,12 @@ Created and maintained by **KMJ TECHNO**.
 Copyright © 2026 KMJ TECHNO.
 
 
+## ChatGPT plugin direction
+
+The public integration is being prepared under the canonical identity **KMJ Desktop Commander — by KMJ TECHNO**. The existing MCP server is local/stdio; it is **not yet a publicly installable KMJ ChatGPT plugin**. Public submission is gated on authenticated remote MCP transport, device pairing/revocation, abuse controls, secret redaction, security tests, and signed release identity.
+
+See [integrations/chatgpt/PUBLISHING.md](integrations/chatgpt/PUBLISHING.md) for the publication and promotion contract. This project will not be promoted under a generic or third-party "Remote Desktop Commander" identity.
+
 ## Product direction
 
 The canonical autonomous-development and world-class engineering roadmap is maintained in [docs/WORLD_CLASS_ROADMAP.md](docs/WORLD_CLASS_ROADMAP.md).
