@@ -1,1 +1,3 @@
-fn main() { kmj_desktop_commander_lib::run(); }
+fn main() {
+    kmj_desktop_commander_lib::run();
+}
