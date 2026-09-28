@@ -21,7 +21,7 @@
       "fullscreen": false
     }],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost https://kmjtechno.com"
     }
   },
   "bundle": { "active": true, "targets": "all", "category": "DeveloperTool", "shortDescription": "KMJ engineering control plane" }
