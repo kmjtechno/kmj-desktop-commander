@@ -13,6 +13,7 @@ pub struct AuditRecord {
     pub timestamp: u64,
     pub principal: String,
     pub server: String,
+    pub device: String,
     pub operation: String,
     pub outcome: String,
     pub exit_code: Option<i32>,
