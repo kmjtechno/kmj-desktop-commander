@@ -1,44 +1,20 @@
-#[path = "../../src-tauri/src/policy.rs"]
-mod policy;
+#[path = "../../src-tauri/src/policy.rs"] mod policy;
+mod audit; mod auth; mod gateway;
 use policy::classify_operation;
 use serde::Serialize;
-use std::{env, fs, path::{Path, PathBuf}, process::{Command, ExitStatus}};
-
-const CLOUDOS_ROOT: &str = "/home/info/kmj-cloudos";
-
-#[derive(Serialize)]
-struct Probe<'a> { app:&'a str, mode:&'a str, policy_mode:&'a str, platform:&'a str, architecture:&'a str }
-
-#[derive(Clone,Copy)]
-enum Op { Inspect, GitStatus, DiffCheck, PyCompile, ProviderTests }
-impl Op {
- fn parse(s:&str)->Option<Self>{match s{"inspect"=>Some(Self::Inspect),"git-status"=>Some(Self::GitStatus),"diff-check"=>Some(Self::DiffCheck),"py-compile"=>Some(Self::PyCompile),"provider-tests"=>Some(Self::ProviderTests),_=>None}}
- fn policy(self)->&'static str{match self{Self::Inspect=>"project.inspect",Self::GitStatus|Self::DiffCheck=>"git.status",_=>"test.run"}}
-}
-fn root(s:&str)->Result<PathBuf,String>{
- if s!=CLOUDOS_ROOT{return Err("CloudOS root denied".into())}
- let p=Path::new(s); if !p.is_absolute()||!p.join(".git").exists(){return Err("invalid CloudOS workspace".into())}
- let c=fs::canonicalize(p).map_err(|e|e.to_string())?;
- if c!=Path::new(CLOUDOS_ROOT){return Err("canonical root mismatch".into())} Ok(c)
-}
-fn run(r:&Path,p:&str,a:&[&str])->Result<ExitStatus,String>{Command::new(p).args(a).current_dir(r).status().map_err(|e|e.to_string())}
-fn execute(r:&str,o:Op)->Result<ExitStatus,String>{
- let r=root(r)?; if !classify_operation(o.policy()).is_allowed(){return Err("policy denied".into())}
- match o{
-  Op::Inspect|Op::GitStatus=>run(&r,"git",&["status","--short","--branch"]),
-  Op::DiffCheck=>run(&r,"git",&["diff","--check"]),
-  Op::PyCompile=>run(&r,"python3",&["-m","py_compile","src/hypervisor/runtime/libvirt_provider.py"]),
-  Op::ProviderTests=>run(&r,"python3",&["-m","pytest","-q","tests/test_libvirt_provider.py"])
- }
-}
-fn main(){
- let a:Vec<String>=env::args().collect();
- match a.get(1).map(String::as_str).unwrap_or("probe"){
-  "probe"=>println!("{}",serde_json::to_string_pretty(&Probe{app:"KMJ Desktop Commander",mode:"headless",policy_mode:"deny-by-default",platform:env::consts::OS,architecture:env::consts::ARCH}).unwrap()),
-  "policy"=>{let Some(x)=a.get(2) else{std::process::exit(2)};println!("{}",serde_json::to_string_pretty(&classify_operation(x)).unwrap())},
-  "cloudos"=>{let Some(n)=a.get(2) else{std::process::exit(2)};let Some(o)=Op::parse(n) else{eprintln!("denied by default");std::process::exit(3)};match execute(a.get(3).map(String::as_str).unwrap_or(CLOUDOS_ROOT),o){Ok(s)=>std::process::exit(s.code().unwrap_or(1)),Err(e)=>{eprintln!("{e}");std::process::exit(3)}}},
-  _=>{eprintln!("denied by default");std::process::exit(3)}
- }
-}
-#[cfg(test)]
-mod tests{use super::*;#[test]fn unknown_denied(){assert!(Op::parse("shell").is_none());assert!(Op::parse("system-reboot").is_none())}#[test]fn wrong_root_denied(){assert!(root("/tmp/kmj-cloudos").is_err());assert!(root("/home/info/kmj-cloudos;id").is_err())}#[test]fn allowlist_policy_allowed(){for o in[Op::Inspect,Op::GitStatus,Op::DiffCheck,Op::PyCompile,Op::ProviderTests]{assert!(classify_operation(o.policy()).is_allowed())}}}
+use sha2::{Digest,Sha256};
+use std::{env,fs,path::{Path,PathBuf},process::Command,time::{SystemTime,UNIX_EPOCH}};
+use uuid::Uuid;
+pub(crate) const CLOUDOS_ROOT:&str="/home/info/kmj-cloudos";
+const DEFAULT_AUDIT:&str="/var/lib/kmj-commander/audit/events.jsonl";
+#[derive(Serialize)]struct Probe<'a>{app:&'a str,mode:&'a str,policy_mode:&'a str,protocol:&'a str,platform:&'a str,architecture:&'a str}
+#[derive(Debug)]pub(crate)struct ExecOutcome{pub success:bool,pub exit_code:Option<i32>,pub output:String}
+fn root(s:&str)->Result<PathBuf,String>{if s!=CLOUDOS_ROOT{return Err("CloudOS root denied".into())}let p=Path::new(s);if !p.is_absolute()||!p.join(".git").exists(){return Err("invalid CloudOS workspace".into())}let c=fs::canonicalize(p).map_err(|e|e.to_string())?;if c!=Path::new(CLOUDOS_ROOT){return Err("canonical root mismatch".into())}Ok(c)}
+fn run(r:&Path,p:&str,a:&[&str])->Result<ExecOutcome,String>{let o=Command::new(p).args(a).current_dir(r).output().map_err(|e|e.to_string())?;let mut text=String::from_utf8_lossy(&o.stdout).to_string();text.push_str(&String::from_utf8_lossy(&o.stderr));text.truncate(262_144);Ok(ExecOutcome{success:o.status.success(),exit_code:o.status.code(),output:text})}
+fn allowed(p:&str)->Result<(),String>{if classify_operation(p).is_allowed(){Ok(())}else{Err("policy denied".into())}}
+pub(crate)fn execute_named(r:&str,op:&str)->Result<ExecOutcome,String>{if op=="commander.probe"{allowed("project.inspect")?;return Ok(ExecOutcome{success:true,exit_code:Some(0),output:serde_json::to_string(&Probe{app:"KMJ Desktop Commander",mode:"headless",policy_mode:"deny-by-default",protocol:"KMJ-COMMANDER/1",platform:env::consts::OS,architecture:env::consts::ARCH}).unwrap()})}let r=root(r)?;match op{"cloudos.inspect"=>{allowed("project.inspect")?;run(&r,"git",&["status","--short","--branch"])},"cloudos.git_status"=>{allowed("git.status")?;run(&r,"git",&["status","--short","--branch"])},"cloudos.diff_check"=>{allowed("git.status")?;run(&r,"git",&["diff","--check"])},"cloudos.py_compile"=>{allowed("test.run")?;run(&r,"python3",&["-m","py_compile","src/hypervisor/runtime/libvirt_provider.py"])},"cloudos.provider_tests"=>{allowed("test.run")?;run(&r,"python3",&["-m","pytest","-q","tests/test_libvirt_provider.py"])},"cloudos.full_tests"=>{allowed("test.run")?;run(&r,"python3",&["-m","pytest","-q"])} ,_=>Err("denied by default".into())}}
+pub(crate)fn now_secs()->u64{SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()}
+pub(crate)fn output_hash(s:&str)->String{format!("{:x}",Sha256::digest(s.as_bytes()))}
+fn secret()->Result<String,String>{let s=env::var("KMJ_COMMANDER_SIGNING_SECRET").map_err(|_|"KMJ_COMMANDER_SIGNING_SECRET is required")?;if s.len()<32{return Err("signing secret must be at least 32 characters".into())}Ok(s)}
+#[tokio::main]async fn main(){let a:Vec<String>=env::args().collect();let command=a.get(1).map(String::as_str).unwrap_or("probe");let result:Result<i32,String>=match command{"probe"=>{println!("{}",serde_json::to_string_pretty(&Probe{app:"KMJ Desktop Commander",mode:"headless",policy_mode:"deny-by-default",protocol:"KMJ-COMMANDER/1",platform:env::consts::OS,architecture:env::consts::ARCH}).unwrap());Ok(0)},"policy"=>match a.get(2){Some(x)=>{println!("{}",serde_json::to_string_pretty(&classify_operation(x)).unwrap());Ok(0)},None=>Err("operation required".into())},"cloudos"=>match a.get(2){Some(op)=>execute_named(a.get(3).map(String::as_str).unwrap_or(CLOUDOS_ROOT),&format!("cloudos.{op}")).map(|o|{print!("{}",o.output);if o.success{0}else{o.exit_code.unwrap_or(1)}}),None=>Err("operation required".into())},"mint-token"=>match(a.get(2),a.get(3)){(Some(sub),Some(scopes))=>{let now=now_secs();let server=env::var("KMJ_COMMANDER_SERVER_ID").unwrap_or_else(|_|"kmjtechnonet".into());let c=auth::TokenClaims{iss:"kmj-commander".into(),sub:sub.clone(),aud:"kmj-vps".into(),server,iat:now,nbf:now,exp:now+300,jti:Uuid::new_v4().to_string(),scopes:scopes.split(',').map(str::to_owned).collect()};secret().and_then(|s|auth::mint(&c,&s)).map(|t|{println!("{t}");0})},_=>Err("subject and comma-separated scopes required".into())},"gateway"=>{let bind=env::var("KMJ_COMMANDER_BIND").unwrap_or_else(|_|"127.0.0.1:8770".into());let server=env::var("KMJ_COMMANDER_SERVER_ID").unwrap_or_else(|_|"kmjtechnonet".into());let audit=env::var("KMJ_COMMANDER_AUDIT_PATH").unwrap_or_else(|_|DEFAULT_AUDIT.into());match secret(){Ok(s)=>gateway::serve(&bind,gateway::GatewayState{secret:s,server,audit_path:audit.into(),replay:std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()))}).await.map(|_|0),Err(e)=>Err(e)}},_=>Err("denied by default".into())};match result{Ok(code)=>std::process::exit(code),Err(e)=>{eprintln!("{e}");std::process::exit(3)}}}
+#[cfg(test)]mod tests{use super::*;#[test]fn unknown_denied(){assert!(execute_named(CLOUDOS_ROOT,"shell").is_err());assert!(execute_named(CLOUDOS_ROOT,"system-reboot").is_err())}#[test]fn wrong_root_denied(){assert!(root("/tmp/kmj-cloudos").is_err());assert!(root("/home/info/kmj-cloudos;id").is_err())}#[test]fn output_hash_stable(){assert_eq!(output_hash("x").len(),64)}}
