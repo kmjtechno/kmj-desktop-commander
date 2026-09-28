@@ -87,7 +87,11 @@ cargo test
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep changes small, testable, security-conscious, and free of credentials or private infrastructure data.
+Issues and pull requests are welcome. Keep changes small, testable, security-conscious, and free of credentials or private infrastructure data. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
 
 ## Project
 
