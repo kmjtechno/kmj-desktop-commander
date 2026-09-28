@@ -44,7 +44,7 @@ jobs:
       - name: Install benchmark dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb strace dbus-daemon
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb strace dbus-daemon at-spi2-core
       - name: Install candidate dependencies
         run: pnpm install --no-frozen-lockfile
       - name: Install baseline dependencies
