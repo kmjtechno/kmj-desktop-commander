@@ -23,12 +23,64 @@ export interface CommanderBootstrap {
 export const PLATFORM_BOOTSTRAP =
   "https://kmjtechno.com/commander/bootstrap.json";
 
-export async function fetchCommanderBootstrap(): Promise<CommanderBootstrap> {
+const CACHE_KEY = "kmj.commander.bootstrap.v1";
+const MIN_REFRESH_MS = 24 * 60 * 60 * 1000;
+const MAX_JITTER_MS = 6 * 60 * 60 * 1000;
+
+interface CachedBootstrap {
+  value: CommanderBootstrap;
+  refresh_after: number;
+}
+
+function readCache(): CachedBootstrap | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedBootstrap;
+    if (!parsed.value || !Number.isFinite(parsed.refresh_after)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(value: CommanderBootstrap) {
+  try {
+    const jitter = Math.floor(Math.random() * MAX_JITTER_MS);
+    const cached: CachedBootstrap = {
+      value,
+      refresh_after: Date.now() + MIN_REFRESH_MS + jitter,
+    };
+    globalThis.localStorage?.setItem(CACHE_KEY, JSON.stringify(cached));
+  } catch {
+    // Cache failure must never block local Commander operations.
+  }
+}
+
+async function fetchNetworkBootstrap(): Promise<CommanderBootstrap> {
   const response = await fetch(PLATFORM_BOOTSTRAP, {
     method: "GET",
     cache: "force-cache",
     headers: { Accept: "application/json" },
   });
-  if (!response.ok) throw new Error(`KMJ Platform bootstrap failed: ${response.status}`);
-  return response.json() as Promise<CommanderBootstrap>;
+  if (!response.ok) {
+    throw new Error(`KMJ Platform bootstrap failed: ${response.status}`);
+  }
+  const value = (await response.json()) as CommanderBootstrap;
+  writeCache(value);
+  return value;
+}
+
+export async function fetchCommanderBootstrap(): Promise<CommanderBootstrap> {
+  const cached = readCache();
+  if (cached && cached.refresh_after > Date.now()) {
+    return cached.value;
+  }
+
+  try {
+    return await fetchNetworkBootstrap();
+  } catch (error) {
+    if (cached) return cached.value;
+    throw error;
+  }
 }
