@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { fetchCommanderBootstrap, type CommanderBootstrap } from "./lib/commercial";
 import {
   commander,
   type JobRecord,
@@ -30,6 +31,7 @@ const blank = (): SavedProfile => ({
 
 export function App() {
   const [system, setSystem] = useState<SystemProbe | null>(null);
+  const [commercial, setCommercial] = useState<CommanderBootstrap | null>(null);
   const [profiles, setProfiles] = useState<SavedProfile[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState<SavedProfile>(blank());
@@ -42,6 +44,7 @@ export function App() {
 
   useEffect(() => {
     commander.probe().then(setSystem).catch(() => undefined);
+    fetchCommanderBootstrap().then(setCommercial).catch(() => undefined);
     commander.profiles().then((items) => {
       setProfiles(items);
       if (items[0]) {
@@ -120,7 +123,7 @@ export function App() {
     <main className="shell">
       <header className="topbar">
         <div><span className="eyebrow">KMJ TECHNO</span><h1>Desktop Commander</h1></div>
-        <span className="status"><i /> {system ? `CORE ONLINE · v${system.app_version}` : "STARTING"}</span>
+        <span className="status"><i /> {system ? `CORE ONLINE · v${system.app_version}` : "STARTING"}{commercial ? ` · ${commercial.channel.toUpperCase()} · ${commercial.default_plan.toUpperCase()}` : ""}</span>
       </header>
 
       <section className="workspace">
