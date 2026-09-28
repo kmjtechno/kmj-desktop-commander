@@ -22,7 +22,11 @@ jobs:
       - name: Read pinned baseline commit
         id: baseline
         shell: bash
-        run: echo "sha=$(python3 -c 'import json; print(json.load(open(".github/performance-baseline.json"))["baseline_commit"])')" >> "$GITHUB_OUTPUT"
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          print("sha=" + json.load(open(".github/performance-baseline.json"))["baseline_commit"])
+          PY
       - name: Checkout immutable baseline
         uses: actions/checkout@v4
         with:
