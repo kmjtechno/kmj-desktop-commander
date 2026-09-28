@@ -1,6 +1,6 @@
 # KMJ Desktop Commander — Minimal Main Platform API Boundary
 
-Status: architecture contract for KSLP-v1 integration.
+Status: architecture contract for KSLP-v1 integration.\n\nNormative request/response, entitlement-claim, error-code and HTTP-cache schemas are defined in `docs/KSLP_V1_WIRE_CONTRACT.md`.
 
 ## Hard boundary
 
