@@ -4,7 +4,17 @@ import path from "node:path";
 const root = process.cwd();
 const configPath = path.join(root, "performance-budgets.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-const b = config.budgets;
+const mode = process.argv[2] ?? "config";
+const profileName = mode === "metrics" ? process.argv[4] : undefined;
+const profile = profileName ? config.ci_profiles?.[profileName] : undefined;
+if (profileName && !profile) {
+  console.error(`PERF_BUDGET_FAIL: unknown CI profile: ${profileName}`);
+  process.exit(1);
+}
+const b = structuredClone(config.budgets);
+for (const [group, values] of Object.entries(profile?.budgets ?? {})) {
+  b[group] = { ...(b[group] ?? {}), ...values };
+}
 
 function fail(message) {
   console.error(`PERF_BUDGET_FAIL: ${message}`);
@@ -41,7 +51,6 @@ for (const [name, value] of [
   ["frontend", b.frontend_dist_mib?.raw_max],
 ]) finite(name, value);
 
-const mode = process.argv[2] ?? "config";
 if (mode === "config") {
   if (b.idle_cpu_percent.p95_max > b.idle_cpu_percent.hard_max) fail("CPU p95 budget exceeds hard ceiling");
   if (b.idle_rss_mib.p95_max > b.idle_rss_mib.hard_max) fail("RSS p95 budget exceeds hard ceiling");
