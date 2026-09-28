@@ -6,11 +6,13 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "check:vps:readonly": "tsx src/readonly.ts"
+    "check:vps:readonly": "tsx src/readonly.ts",
+    "start:remote": "tsx src/remote.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.1.0",
-    "zod": "^4.1.0"
+    "zod": "^4.1.0",
+    "@modelcontextprotocol/node": "2.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
