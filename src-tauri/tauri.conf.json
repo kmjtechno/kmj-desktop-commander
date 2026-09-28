@@ -31,9 +31,7 @@
     "targets": "all",
     "category": "DeveloperTool",
     "shortDescription": "KMJ engineering control plane",
-    "windows": {
-      "bundleVCRuntime": true
-    },
+    "windows": {},
     "macOS": {
       "signingIdentity": "-"
     }
