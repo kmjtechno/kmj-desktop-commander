@@ -1,4 +1,5 @@
-import { type FormEvent, useEffect, useState } from "react";\nimport { invoke } from "@tauri-apps/api/core";
+import { type FormEvent, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { fetchCommanderBootstrap, type CommanderBootstrap } from "./lib/commercial";
 import {
   commander,
