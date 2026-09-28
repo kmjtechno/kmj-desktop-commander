@@ -122,7 +122,10 @@ export function App() {
   return (
     <main className="shell">
       <header className="topbar">
-        <div><span className="eyebrow">KMJ TECHNO</span><h1>Desktop Commander</h1></div>
+        <div className="brandLockup">
+          <img className="brandIcon" src="/commander.svg" alt="" />
+          <div><span className="eyebrow">KMJ TECHNO</span><h1>Desktop Commander</h1><small className="brandTagline">AUTONOMOUS ENGINEERING CONTROL PLANE</small></div>
+        </div>
         <span className="status"><i /> {system ? `CORE ONLINE · v${system.app_version}` : "STARTING"}{commercial ? ` · ${commercial.channel.toUpperCase()} · ${commercial.default_plan.toUpperCase()}` : ""}</span>
       </header>
 
