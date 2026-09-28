@@ -59,3 +59,14 @@ A missing required metric is a failure, not a pass.
 Performance budgets are product contracts, not moving baselines. CI MUST NOT automatically raise them after a regression. Any increase requires a dedicated reviewed commit explaining the measured reason and user benefit. Feature work should instead reduce or stay within the budget.
 
 Platform-specific stricter budgets may be added. A platform-specific override may never silently weaken the global hard ceiling.
+
+
+## Pinned regression baseline
+
+The relative-regression gate is anchored by `.github/performance-baseline.json`. It pins an immutable Git commit rather than copying or inventing benchmark numbers. CI checks out that exact commit and the candidate, builds both with the same pinned toolchain, and measures both sequentially on the same GitHub runner and virtual display.
+
+CPU, RSS, warm startup and cold startup fail only when both conditions are true: the one-sided Mann-Whitney U p-value is below 0.01 and the candidate p95 exceeds the configured practical delta. This prevents tiny runner noise from blocking a release while still detecting repeatable regressions.
+
+Idle network is a zero-tolerance counter and package sizes are deterministic build outputs, so statistical significance is not meaningful for those values. They fail directly when the candidate exceeds the pinned baseline by the configured practical allowance. Absolute release budgets remain enforced independently.
+
+Every performance run uploads the measured baseline samples, candidate samples, environment manifest, network traces and `regression-report.json`. Moving the baseline requires an explicit reviewed edit to `.github/performance-baseline.json`; CI never updates it automatically.
