@@ -43,7 +43,19 @@ def stop(p):
         except ProcessLookupError:pass
         p.wait(timeout=3)
 def env(root):
-    e=os.environ.copy();e.update({"KMJ_PERF_HARNESS":"1","KMJ_PERF_READY_FILE":str(root/"ui-ready"),"XDG_DATA_HOME":str(root/"data"),"XDG_CONFIG_HOME":str(root/"config"),"XDG_CACHE_HOME":str(root/"cache")});return e
+    e=os.environ.copy();e.update({
+        "KMJ_PERF_HARNESS":"1",
+        "KMJ_PERF_READY_FILE":str(root/"ui-ready"),
+        "XDG_DATA_HOME":str(root/"data"),
+        "XDG_CONFIG_HOME":str(root/"config"),
+        "XDG_CACHE_HOME":str(root/"cache"),
+        # GitHub's Xvfb runner has no real GPU/compositor. Force WebKitGTK's
+        # deterministic software path so a blank headless surface cannot be
+        # mistaken for an application startup regression.
+        "WEBKIT_DISABLE_DMABUF_RENDERER":"1",
+        "WEBKIT_DISABLE_COMPOSITING_MODE":"1",
+        "LIBGL_ALWAYS_SOFTWARE":"1",
+    });return e
 def launch(binary,state,cmd=None):
     (state/"ui-ready").unlink(missing_ok=True)
     return subprocess.Popen(cmd or [str(binary)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,env=env(state),start_new_session=True,bufsize=1)
