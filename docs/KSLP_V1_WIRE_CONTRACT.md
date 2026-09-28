@@ -1,6 +1,6 @@
 # KSLP-v1 Commander Wire Contract
 
-Status: normative API contract for KMJ Desktop Commander and KMJ Main Platform.
+Status: normative API contract for KMJ Desktop Commander and KMJ Main Platform.\n\nMachine-readable OpenAPI 3.1 contract: `docs/openapi/commander-kslp-v1.openapi.yaml`.
 
 All timestamps are unsigned Unix seconds in UTC. All identifiers are opaque ASCII strings. JSON requests use `Content-Type: application/json`. Unknown request fields MUST be rejected unless a future protocol version explicitly permits them.
 
