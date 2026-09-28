@@ -95,6 +95,17 @@ jobs:
           git commit -m "perf: propose reviewed baseline refresh to $SHORT"
           git push origin "$BRANCH"
           echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+      - name: Upload auditable baseline-change artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-change-audit-${{ github.run_id }}
+          path: |
+            /tmp/baseline-change-audit.json
+            /tmp/baseline-evidence/evidence-sha256.json
+            /tmp/baseline-evidence/metrics.json
+            /tmp/baseline-evidence/environment.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Open review-required baseline change PR
         env:
           GH_TOKEN: ${{ github.token }}
