@@ -33,15 +33,15 @@ pub fn classify_operation(operation: &str) -> PolicyDecision {
             approval_required: false,
             reason: "Read-only inspection is permitted by the base policy.".into(),
         },
-        "format.apply" | "test.run" => PolicyDecision {
+        "format.apply" | "test.run" | "filesystem.project_write" | "git.normal_write" | "service.restart" | "package.project_manage" => PolicyDecision {
             operation: operation.into(),
             risk: RiskLevel::Reversible,
             allowed: true,
             approval_required: false,
-            reason: "Reversible development operation is permitted in a non-production workspace."
+            reason: "Reversible operational changes are permitted in a non-production workspace and remain auditable."
                 .into(),
         },
-        "deploy.production" | "privilege.escalate" | "firewall.change" => PolicyDecision {
+        "deploy.production" | "privilege.escalate" | "firewall.change" | "system.package_manage" | "system.reboot" | "service.system_change" => PolicyDecision {
             operation: operation.into(),
             risk: RiskLevel::Privileged,
             allowed: false,
