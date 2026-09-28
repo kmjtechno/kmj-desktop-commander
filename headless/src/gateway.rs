@@ -95,7 +95,10 @@ fn authenticate(
     match devices::is_active(&state.devices_path, &claims.device) {
         Ok(true) => Ok(claims),
         Ok(false) => Err((StatusCode::FORBIDDEN, "device revoked or not paired".into())),
-        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "device registry unavailable".into())),
+        Err(_) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "device registry unavailable".into(),
+        )),
     }
 }
 
