@@ -1,6 +1,6 @@
 mod policy;
 
-use policy::{classify_operation, PolicyDecision};
+use policy::{PolicyDecision, classify_operation};
 use serde::Serialize;
 
 #[derive(Serialize)]
