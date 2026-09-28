@@ -1,4 +1,4 @@
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -107,7 +107,11 @@ pub fn verify(
     })
 }
 
-fn validate_claims(claims: &EntitlementClaims, expected_device: &str, now: u64) -> Result<(), String> {
+fn validate_claims(
+    claims: &EntitlementClaims,
+    expected_device: &str,
+    now: u64,
+) -> Result<(), String> {
     if claims.protocol != PROTOCOL || claims.product != PRODUCT {
         return Err("entitlement product or protocol mismatch".into());
     }
