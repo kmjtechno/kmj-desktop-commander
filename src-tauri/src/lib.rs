@@ -24,6 +24,9 @@ struct SystemProbe {
 #[tauri::command]
 fn performance_ready() {
     if std::env::var("KMJ_PERF_HARNESS").as_deref() == Ok("1") {
+        if let Ok(path) = std::env::var("KMJ_PERF_READY_FILE") {
+            let _ = std::fs::write(path, b"ready\n");
+        }
         println!("KMJ_PERF_UI_READY");
     }
 }
