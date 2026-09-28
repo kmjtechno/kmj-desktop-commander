@@ -8,7 +8,7 @@ KMJ Desktop Commander is a local-first engineering command center for operating 
 
 Project files, terminals, tests, builds, Git operations, AI context and remote execution stay on the customer device or customer-controlled server by default. KMJ Main Platform handles only account identity, signed entitlements, release metadata, billing state, abuse controls and coarse anonymous product metrics when the user has opted in.
 
-The desktop app must never call KMJ infrastructure per shell command. Commercial entitlements are cached locally. The target entitlement refresh interval is seven days, with revocation and critical-security refreshes allowed to shorten that window.
+The desktop app must never call KMJ infrastructure per shell command. Commercial entitlements are signed by KMJ Main Platform and verified locally with Ed25519. The public bootstrap is cached client-side and refreshes no more than roughly once per 24–30 hours under normal use; refresh jitter prevents synchronized client bursts. Signed commercial entitlements target a seven-day refresh cadence, with a bounded offline grace state so temporary KMJ Platform/network outages do not stop normal recovery work. Revocation and critical-security refreshes may shorten that window. There is no idle heartbeat or command-by-command licensing telemetry.
 
 ## Freemium conversion
 
@@ -53,3 +53,18 @@ Use platform-native installers and signed releases. Auto-update metadata can be 
 ## Safety and trust
 
 Never upload source code, SSH private keys, secrets or terminal output to KMJ servers by default. Production/destructive operations remain approval-gated. Telemetry is opt-in and coarse. License enforcement must fail gracefully for temporary network loss and must not disable basic recovery/export functions.
+
+
+## Scale and acquisition contract
+
+The low-cost growth loop is product-led rather than server-compute-led:
+
+- Free activation requires no payment card.
+- Free remains useful enough to demonstrate trust: one device, three server profiles, unlimited manual operations and a meaningful governed-autopilot allowance.
+- Upgrade prompts appear only when a user reaches a real scale/automation/team boundary.
+- Main Platform serves cacheable static bootstrap/release metadata; Commander performs execution and entitlement checks locally.
+- Signed entitlement renewal requests are small and infrequent. Clients add refresh jitter so a large installed base cannot create a synchronized renewal spike.
+- Referral rewards, when implemented with abuse controls, grant time-limited Pro entitlement rather than cash.
+- GitHub releases, reproducible security evidence, fast onboarding, SEO product pages and short workflow demos are the primary acquisition channels before paid advertising.
+- Measure activation → first successful operation → weekly retained use → quota/feature boundary → paid conversion. Do not optimize raw downloads independently of retained successful users.
+- Enterprise revenue comes from governance, SSO, fleet policy, audit/export, support and larger limits—not from routing ordinary customer commands through KMJ servers.
