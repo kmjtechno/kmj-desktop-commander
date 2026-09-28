@@ -62,6 +62,29 @@ fn validate(profile: &SavedProfile) -> Result<(), String> {
     if profile.label.trim().is_empty() || profile.label.len() > 80 {
         return Err("Profile label is invalid".into());
     }
+    if profile.port == 0 {
+        return Err("SSH port must be greater than zero".into());
+    }
+    if profile.host.is_empty()
+        || profile.host.len() > 253
+        || profile.host.starts_with('-')
+        || !profile
+            .host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | ':'))
+    {
+        return Err("Invalid SSH host".into());
+    }
+    if profile.username.is_empty()
+        || profile.username.starts_with('-')
+        || profile.username.len() > 64
+        || !profile
+            .username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
+    {
+        return Err("Invalid SSH username".into());
+    }
     if profile.project_root.is_empty()
         || !profile.project_root.starts_with('/')
         || profile.project_root.len() > 512
