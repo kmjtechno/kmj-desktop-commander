@@ -1,0 +1,7 @@
+use serde::Serialize;
+use sha2::{Digest,Sha256};
+use std::{fs::{self,OpenOptions},io::Write,path::Path};
+#[derive(Serialize)]pub struct AuditRecord{pub event_id:String,pub request_id:String,pub timestamp:u64,pub principal:String,pub server:String,pub operation:String,pub outcome:String,pub exit_code:Option<i32>,pub output_sha256:String,pub previous_hash:String,pub record_hash:String}
+pub fn append(path:&Path,mut r:AuditRecord)->Result<String,String>{if let Some(parent)=path.parent(){fs::create_dir_all(parent).map_err(|e|e.to_string())?}r.previous_hash=last_hash(path).unwrap_or_else(||"GENESIS".into());r.record_hash.clear();let canonical=serde_json::to_vec(&r).map_err(|e|e.to_string())?;r.record_hash=format!("{:x}",Sha256::digest(&canonical));let hash=r.record_hash.clone();let line=serde_json::to_string(&r).map_err(|e|e.to_string())?;let mut f=OpenOptions::new().create(true).append(true).open(path).map_err(|e|e.to_string())?;writeln!(f,"{line}").map_err(|e|e.to_string())?;Ok(hash)}
+pub fn read_bounded(path:&Path,limit:usize)->Result<Vec<String>,String>{if !path.exists(){return Ok(vec![])}let s=fs::read_to_string(path).map_err(|e|e.to_string())?;let mut lines:Vec<_>=s.lines().rev().take(limit.min(200)).map(str::to_owned).collect();lines.reverse();Ok(lines)}
+fn last_hash(path:&Path)->Option<String>{let s=fs::read_to_string(path).ok()?;let line=s.lines().last()?;let v:serde_json::Value=serde_json::from_str(line).ok()?;v.get("record_hash")?.as_str().map(str::to_owned)}
