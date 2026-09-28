@@ -179,3 +179,8 @@ Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
 Created and maintained by **KMJ TECHNO**.
 
 Copyright © 2026 KMJ TECHNO.
+
+
+## Product direction
+
+The canonical autonomous-development and world-class engineering roadmap is maintained in [docs/WORLD_CLASS_ROADMAP.md](docs/WORLD_CLASS_ROADMAP.md).
