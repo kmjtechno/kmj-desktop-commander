@@ -1,0 +1,26 @@
+{
+  "product_name": "KMJ Desktop Commander",
+  "publisher": "KMJ TECHNO",
+  "short_name": "KMJ Commander",
+  "tagline": "Autonomous engineering control plane for customer-controlled computers and servers.",
+  "description": "Connect ChatGPT to authorized development machines through KMJ Desktop Commander. Inspect projects, run allow-listed quality gates, edit project files, and perform policy-controlled engineering operations while keeping privileged and destructive actions behind explicit controls.",
+  "brand": {
+    "mark": "public/commander.svg",
+    "theme": "KMJ Main Platform",
+    "background": "#06080b",
+    "foreground": "#ffffff"
+  },
+  "repository": "https://github.com/kmjtechno/kmj-desktop-commander",
+  "security": "SECURITY.md",
+  "privacy_position": "Local-first. Customer source code, SSH keys, secrets, and raw execution data remain customer-controlled by default.",
+  "publication_status": "not_yet_submitted",
+  "required_release_gates": [
+    "Authenticated remote HTTPS MCP transport",
+    "Device pairing and revocation",
+    "Rate limits and abuse controls",
+    "Secret redaction and audit evidence",
+    "Privacy/support/public terms surfaces",
+    "End-to-end plugin security tests",
+    "Signed release identity"
+  ]
+}
