@@ -1,5 +1,6 @@
 mod audit;
 mod auth;
+mod devices;
 mod gateway;
 #[path = "../../src-tauri/src/policy.rs"]
 mod policy;
@@ -17,6 +18,7 @@ use uuid::Uuid;
 
 pub(crate) const CLOUDOS_ROOT: &str = "/home/info/kmj-cloudos";
 const DEFAULT_AUDIT: &str = "/var/lib/kmj-commander/audit/events.jsonl";
+const DEFAULT_DEVICES: &str = "/var/lib/kmj-commander/devices.json";
 
 #[derive(Serialize)]
 struct Probe<'a> {
@@ -145,6 +147,12 @@ pub(crate) fn output_hash(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
+fn devices_path() -> PathBuf {
+    env::var("KMJ_COMMANDER_DEVICES_PATH")
+        .unwrap_or_else(|_| DEFAULT_DEVICES.into())
+        .into()
+}
+
 fn secret() -> Result<String, String> {
     let secret = env::var("KMJ_COMMANDER_SIGNING_SECRET")
         .map_err(|_| "KMJ_COMMANDER_SIGNING_SECRET is required")?;
@@ -199,30 +207,55 @@ async fn main() {
             }),
             None => Err("operation required".into()),
         },
-        "mint-token" => match (args.get(2), args.get(3)) {
-            (Some(subject), Some(scopes)) => {
+        "pair-device" => match args.get(2) {
+            Some(device) => devices::pair(&devices_path(), device, now_secs()).map(|value| {
+                println!("{}", serde_json::to_string_pretty(&value).unwrap());
+                0
+            }),
+            None => Err("device id required".into()),
+        },
+        "revoke-device" => match args.get(2) {
+            Some(device) => devices::revoke(&devices_path(), device, now_secs()).map(|value| {
+                println!("{}", serde_json::to_string_pretty(&value).unwrap());
+                0
+            }),
+            None => Err("device id required".into()),
+        },
+        "list-devices" => devices::list(&devices_path()).map(|values| {
+            println!("{}", serde_json::to_string_pretty(&values).unwrap());
+            0
+        }),
+        "mint-token" => match (args.get(2), args.get(3), args.get(4)) {
+            (Some(subject), Some(device), Some(scopes)) => {
                 let now = now_secs();
                 let server =
                     env::var("KMJ_COMMANDER_SERVER_ID").unwrap_or_else(|_| "kmjtechnonet".into());
-                let claims = auth::TokenClaims {
-                    iss: "kmj-commander".into(),
-                    sub: subject.clone(),
-                    aud: "kmj-vps".into(),
-                    server,
-                    iat: now,
-                    nbf: now,
-                    exp: now + 300,
-                    jti: Uuid::new_v4().to_string(),
-                    scopes: scopes.split(',').map(str::to_owned).collect(),
-                };
-                secret()
-                    .and_then(|value| auth::mint(&claims, &value))
-                    .map(|token| {
-                        println!("{token}");
-                        0
-                    })
+                match devices::is_active(&devices_path(), device) {
+                    Ok(true) => {
+                        let claims = auth::TokenClaims {
+                            iss: "kmj-commander".into(),
+                            sub: subject.clone(),
+                            aud: "kmj-vps".into(),
+                            server,
+                            device: device.clone(),
+                            iat: now,
+                            nbf: now,
+                            exp: now + 300,
+                            jti: Uuid::new_v4().to_string(),
+                            scopes: scopes.split(',').map(str::to_owned).collect(),
+                        };
+                        secret()
+                            .and_then(|value| auth::mint(&claims, &value))
+                            .map(|token| {
+                                println!("{token}");
+                                0
+                            })
+                    }
+                    Ok(false) => Err("device is not paired or has been revoked".into()),
+                    Err(error) => Err(error),
+                }
             }
-            _ => Err("subject and comma-separated scopes required".into()),
+            _ => Err("subject, device id and comma-separated scopes required".into()),
         },
         "gateway" => {
             let bind = env::var("KMJ_COMMANDER_BIND").unwrap_or_else(|_| "127.0.0.1:8770".into());
@@ -237,6 +270,7 @@ async fn main() {
                         secret: value,
                         server,
                         audit_path: audit_path.into(),
+                        devices_path: devices_path(),
                         replay: std::sync::Arc::new(std::sync::Mutex::new(
                             std::collections::HashMap::new(),
                         )),

@@ -21,9 +21,15 @@ if [[ ! -f "$env_file" ]]; then
     printf 'KMJ_COMMANDER_SERVER_ID=%s\n' "$(hostname -s)"
     printf 'KMJ_COMMANDER_BIND=127.0.0.1:8770\n'
     printf 'KMJ_COMMANDER_AUDIT_PATH=%s/.local/state/kmj-commander/audit/events.jsonl\n' "$HOME"
+    printf 'KMJ_COMMANDER_DEVICES_PATH=%s/.local/state/kmj-commander/devices.json\n' "$HOME"
   } > "$env_file"
   chmod 0600 "$env_file"
 fi
+
+if ! grep -q '^KMJ_COMMANDER_DEVICES_PATH=' "$env_file"; then
+  printf 'KMJ_COMMANDER_DEVICES_PATH=%s/.local/state/kmj-commander/devices.json\n' "$HOME" >> "$env_file"
+fi
+chmod 0600 "$env_file"
 
 systemctl --user daemon-reload
 systemctl --user enable --now kmj-commander-headless.service
@@ -36,7 +42,9 @@ set -a
 # shellcheck disable=SC1090
 source "$env_file"
 set +a
-token="$("$bin_dir/kmj-commander-headless" mint-token chatgpt 'commander:read,cloudos:read,cloudos:test,audit:read')"
+device_id="chatgpt-local-verifier"
+"$bin_dir/kmj-commander-headless" pair-device "$device_id" >/dev/null
+token="$("$bin_dir/kmj-commander-headless" mint-token chatgpt "$device_id" 'commander:read,cloudos:read,cloudos:test,audit:read')"
 request_id="$(cat /proc/sys/kernel/random/uuid)"
 nonce="$(openssl rand -hex 16)"
 timestamp="$(date +%s)"
@@ -48,4 +56,12 @@ curl --fail --silent --show-error -X POST \
   http://127.0.0.1:8770/v1/execute
 
 echo
-echo "KMJ Commander headless gateway verification PASS"
+"$bin_dir/kmj-commander-headless" revoke-device "$device_id" >/dev/null
+revoked_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST \
+  -H "authorization: Bearer $token" \
+  -H 'content-type: application/json' \
+  --data "$payload" \
+  http://127.0.0.1:8770/v1/execute)"
+[[ "$revoked_status" == "403" ]] || { echo "expected revoked device to return 403, got $revoked_status" >&2; exit 1; }
+
+echo "KMJ Commander headless gateway verification PASS (pair + auth + execute + revoke)"
