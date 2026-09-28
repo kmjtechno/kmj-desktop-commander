@@ -10,7 +10,7 @@
   "budgets": {
     "idle_cpu_percent": {
       "p95_max": 0.5,
-      "hard_max": 1.0
+      "hard_max": 1
     },
     "idle_rss_mib": {
       "p95_max": 160,
@@ -30,6 +30,21 @@
     },
     "frontend_dist_mib": {
       "raw_max": 2
+    }
+  },
+  "ci_profiles": {
+    "linux_xvfb_software": {
+      "description": "Synthetic GitHub Actions/Xvfb WebKitGTK software-render safety ceilings. Product targets remain unchanged; statistically significant baseline regressions are enforced separately.",
+      "budgets": {
+        "idle_cpu_percent": {
+          "p95_max": 2.25,
+          "hard_max": 5
+        },
+        "idle_rss_mib": {
+          "p95_max": 425,
+          "hard_max": 450
+        }
+      }
     }
   }
 }
