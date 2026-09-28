@@ -55,7 +55,7 @@ jobs:
         run: |
           python3 scripts/perf/linux-harness.py --binary src-tauri/target/release/kmj-desktop-commander --bundle-dir src-tauri/target/release/bundle --output-dir performance-artifacts
       - name: Enforce measured budgets
-        run: pnpm perf:metrics -- performance-artifacts/metrics.json
+        run: node scripts/check-performance-budgets.mjs metrics performance-artifacts/metrics.json
       - name: Upload machine-readable performance evidence
         if: always()
         uses: actions/upload-artifact@v4
