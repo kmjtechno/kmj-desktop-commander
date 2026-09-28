@@ -45,7 +45,8 @@ impl JobStore {
             if job.status == JobStatus::Running {
                 job.status = JobStatus::Interrupted;
                 job.finished_ms = Some(now);
-                job.summary = Some("Interrupted by Commander restart; safe to inspect/retry.".into());
+                job.summary =
+                    Some("Interrupted by Commander restart; safe to inspect/retry.".into());
                 recovered = true;
             }
         }
