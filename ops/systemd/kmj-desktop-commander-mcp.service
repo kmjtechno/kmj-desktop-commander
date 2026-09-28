@@ -1,0 +1,21 @@
+[Unit]
+Description=KMJ Desktop Commander Remote MCP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/kmj-desktop-commander/integrations/mcp
+EnvironmentFile=%h/.config/kmj-desktop-commander/remote-mcp.env
+ExecStart=/usr/bin/env pnpm start:remote
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.ssh %h/kmj-desktop-commander
+UMask=0077
+
+[Install]
+WantedBy=default.target
