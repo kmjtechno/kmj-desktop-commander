@@ -70,3 +70,28 @@ CPU, RSS, warm startup and cold startup fail only when both conditions are true:
 Idle network is a zero-tolerance counter and package sizes are deterministic build outputs, so statistical significance is not meaningful for those values. They fail directly when the candidate exceeds the pinned baseline by the configured practical allowance. Absolute release budgets remain enforced independently.
 
 Every performance run uploads the measured baseline samples, candidate samples, environment manifest, network traces and `regression-report.json`. Moving the baseline requires an explicit reviewed edit to `.github/performance-baseline.json`; CI never updates it automatically.
+
+
+## Reviewed baseline refresh workflow
+
+The pinned baseline MUST NOT be edited as part of ordinary feature work or automatically after a benchmark.
+
+Baseline refresh uses two separate manual workflows:
+
+1. **Performance Baseline Candidate** accepts a full commit SHA that must already be contained in `main`. It builds a release with the pinned toolchain, runs the complete performance harness, enforces all absolute budgets, records the requesting actor/reason and environment, SHA-256 seals the raw evidence, and uploads a 90-day `baseline-refresh-candidate-<run-id>` artifact. A failed or cancelled run is ineligible.
+2. **Approve Performance Baseline Refresh** is a separate manual action performed only after the candidate run succeeds. It requires the successful candidate run ID and an approval reason. It re-queries GitHub for the run, verifies that it came from the candidate workflow and concluded `success`, downloads the named evidence artifact, verifies every SHA-256 seal, and re-checks that the candidate commit remains in `main`.
+
+The approval job targets the `performance-baseline-approval` GitHub Environment. Repository administrators SHOULD configure that Environment with required reviewers so GitHub provides an additional protected approval gate. The separate approval workflow remains an explicit post-success action even when Environment protection is not configured.
+
+Approval does not modify `main` directly. It creates a dedicated `perf/baseline-refresh-...` branch and pull request. The proposed change contains:
+- the old and new pinned baseline SHA;
+- candidate benchmark run ID and URL;
+- candidate requester;
+- approval actor and approval workflow run ID;
+- human approval reason;
+- accepted measured metrics;
+- SHA-256 hashes of environment, request, metrics, samples and network trace evidence.
+
+The same information is committed under `.github/performance-baseline-history/` and uploaded as a 90-day `baseline-change-audit-<approval-run-id>` artifact. The baseline changes only when that PR passes normal required checks/review and is merged.
+
+This process intentionally has no automatic "bless current performance" path. A regression cannot make itself the new baseline merely by completing CI.
