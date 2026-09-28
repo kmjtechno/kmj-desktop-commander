@@ -1,0 +1,22 @@
+[Unit]
+Description=KMJ Desktop Commander Headless Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/kmj-commander/gateway.env
+ExecStart=%h/.local/bin/kmj-commander-headless gateway
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/kmj-commander
+RestrictSUIDSGID=true
+LockPersonality=true
+UMask=0077
+
+[Install]
+WantedBy=default.target
