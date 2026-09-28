@@ -2,7 +2,7 @@
   "schema": 1,
   "product": "KMJ_DESKTOP_COMMANDER",
   "platform": "linux-x64",
-  "baseline_commit": "b210f40d71dfb7a4ef0cdee7cf08cbb0b706b7d4",
+  "baseline_commit": "998ce4a6adf7d2455a613b3c2455fb65f38e3173",
   "measurement_contract": {
     "warmup_seconds": 30,
     "idle_window_seconds": 600,
@@ -42,7 +42,7 @@
   "policy": "CPU, RSS and startup regressions require both one-sided Mann-Whitney significance and a practical p95 delta. Network and binary/package size are deterministic counters and fail on practical increase without a statistical test.",
   "seed_provenance": {
     "kind": "initial-baseline-before-first-merge",
-    "reason": "Previous seed b9102879b76592298cc6635900f5abd15d26a649 cannot build because its App.tsx contains an invalid literal newline escape. b210f40d71dfb7a4ef0cdee7cf08cbb0b706b7d4 is the first clean head with CI and all native installer matrices verified green.",
+    "reason": "Initial baseline is the first buildable feature head with a deterministic UI-readiness signal. Earlier seeds could not produce a reliable usable-UI startup measurement on headless CI.",
     "future_changes": "signed-reviewed-baseline-refresh-only"
   }
 }
