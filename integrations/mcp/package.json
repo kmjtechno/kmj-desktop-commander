@@ -7,7 +7,8 @@
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "check:vps:readonly": "tsx src/readonly.ts",
-    "start:remote": "tsx src/remote.ts"
+    "start:remote": "tsx src/remote.ts",
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.1.0",
