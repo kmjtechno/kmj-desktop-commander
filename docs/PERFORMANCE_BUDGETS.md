@@ -95,3 +95,12 @@ Approval does not modify `main` directly. It creates a dedicated `perf/baseline-
 The same information is committed under `.github/performance-baseline-history/` and uploaded as a 90-day `baseline-change-audit-<approval-run-id>` artifact. The baseline changes only when that PR passes normal required checks/review and is merged.
 
 This process intentionally has no automatic "bless current performance" path. A regression cannot make itself the new baseline merely by completing CI.
+
+
+### Cryptographically signed baseline audit manifests
+
+Every approved baseline refresh produces a canonical JSON audit manifest (schema 2) before any refresh branch is pushed. The manifest includes the repository, old and new baseline commit SHAs, source benchmark run ID/attempt/URL/requester/reason, approval actor/run/attempt/reason/environment, accepted metrics, and SHA-256 hashes for the sealed benchmark evidence.
+
+The canonical manifest uses deterministic sorted-key compact JSON. `actions/attest@v4` then binds the exact manifest bytes to a GitHub OIDC identity using a Sigstore-issued short-lived signing certificate. No long-lived private signing key or signing secret is stored in this repository. The workflow immediately verifies the resulting attestation with `gh attestation verify`; verification failure prevents the baseline-refresh branch and PR from being created.
+
+The generated Sigstore bundle is committed beside the manifest as `<manifest>.sigstore.json` and is also included in the 90-day baseline-change audit artifact together with the GitHub attestation ID and URL. The baseline therefore has three linked records: the reviewed manifest in Git history, its cryptographic attestation bundle, and the GitHub-hosted attestation record.
