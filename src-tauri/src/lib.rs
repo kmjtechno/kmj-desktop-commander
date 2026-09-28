@@ -21,14 +21,18 @@ struct SystemProbe {
     policy_mode: &'static str,
 }
 
-#[tauri::command]
-fn performance_ready() {
+fn signal_performance_ready() {
     if std::env::var("KMJ_PERF_HARNESS").as_deref() == Ok("1") {
         if let Ok(path) = std::env::var("KMJ_PERF_READY_FILE") {
             let _ = std::fs::write(path, b"ready\n");
         }
         println!("KMJ_PERF_UI_READY");
     }
+}
+
+#[tauri::command]
+fn performance_ready() {
+    signal_performance_ready();
 }
 
 #[tauri::command]
@@ -139,6 +143,9 @@ fn summarize(output: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .on_page_load(|_webview, _payload| {
+            signal_performance_ready();
+        })
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             app.manage(Mutex::new(JobStore::load(data_dir.join("jobs.json"))));
