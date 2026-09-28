@@ -1,8 +1,10 @@
+mod entitlement;
 mod jobs;
 mod policy;
 mod profiles;
 mod runner;
 
+use entitlement::{SignedEntitlement, VerifiedEntitlement};
 use jobs::{JobRecord, JobStore};
 use policy::{PolicyDecision, classify_operation};
 use profiles::{ProfileStore, SavedProfile};
@@ -32,6 +34,15 @@ fn system_probe() -> SystemProbe {
 #[tauri::command]
 fn evaluate_operation(operation: String) -> PolicyDecision {
     classify_operation(&operation)
+}
+
+#[tauri::command]
+fn verify_entitlement(
+    artifact: SignedEntitlement,
+    public_key: String,
+    device_id: String,
+) -> Result<VerifiedEntitlement, String> {
+    entitlement::verify(&artifact, &public_key, &device_id, entitlement::now_secs())
 }
 
 #[tauri::command]
@@ -122,6 +133,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             system_probe,
             evaluate_operation,
+            verify_entitlement,
             list_jobs,
             list_profiles,
             save_profile,
