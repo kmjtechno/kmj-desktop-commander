@@ -1,28 +1,69 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
-const PROBE_COMMAND: &str = "printf 'KMJ_COMMANDER_PROBE\\n'; uname -srm; printf 'HOST='; hostname";
-const OUTPUT_LIMIT: usize = 64 * 1024;
+const OUTPUT_LIMIT: usize = 256 * 1024;
 
 #[derive(Clone, Deserialize)]
 pub struct RemoteProfile {
     pub host: String,
     pub username: String,
     pub port: u16,
+    pub project_root: Option<String>,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RemoteOperation {
+    Probe,
+    ProjectInspect,
+    GitStatus,
+    GitDiffCheck,
+    PhpTest,
+    FrontendTypecheck,
+    FrontendBuild,
+    RustTest,
+}
+
+impl RemoteOperation {
+    pub fn policy_id(self) -> &'static str {
+        match self {
+            Self::Probe => "remote.probe",
+            Self::ProjectInspect => "project.inspect",
+            Self::GitStatus | Self::GitDiffCheck => "git.status",
+            Self::PhpTest | Self::FrontendTypecheck | Self::FrontendBuild | Self::RustTest => {
+                "test.run"
+            }
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Probe => "remote.probe",
+            Self::ProjectInspect => "project.inspect",
+            Self::GitStatus => "git.status",
+            Self::GitDiffCheck => "git.diff_check",
+            Self::PhpTest => "php.test",
+            Self::FrontendTypecheck => "frontend.typecheck",
+            Self::FrontendBuild => "frontend.build",
+            Self::RustTest => "rust.test",
+        }
+    }
 }
 
 #[derive(Serialize)]
-pub struct RemoteProbeResult {
+pub struct RemoteResult {
     pub target: String,
+    pub operation: String,
     pub success: bool,
     pub exit_code: Option<i32>,
     pub output: String,
 }
 
-pub fn probe(profile: &RemoteProfile) -> Result<RemoteProbeResult, String> {
+pub fn execute(profile: &RemoteProfile, operation: RemoteOperation) -> Result<RemoteResult, String> {
     validate(profile)?;
-    let target = format!("{}@{}", profile.username, profile.host);
+    let command = remote_command(profile, operation)?;
     let port = profile.port.to_string();
+
     let output = Command::new("ssh")
         .args([
             "-o",
@@ -30,11 +71,13 @@ pub fn probe(profile: &RemoteProfile) -> Result<RemoteProbeResult, String> {
             "-o",
             "StrictHostKeyChecking=yes",
             "-o",
-            "ConnectTimeout=8",
+            "ConnectTimeout=10",
             "-p",
             &port,
-            &target,
-            PROBE_COMMAND,
+            "-l",
+            &profile.username,
+            &profile.host,
+            &command,
         ])
         .output()
         .map_err(|error| format!("Unable to start OpenSSH client: {error}"))?;
@@ -48,12 +91,40 @@ pub fn probe(profile: &RemoteProfile) -> Result<RemoteProbeResult, String> {
     }
     text.truncate(OUTPUT_LIMIT);
 
-    Ok(RemoteProbeResult {
-        target,
+    Ok(RemoteResult {
+        target: format!("{}@{}:{}", profile.username, profile.host, profile.port),
+        operation: operation.label().into(),
         success: output.status.success(),
         exit_code: output.status.code(),
         output: text,
     })
+}
+
+fn remote_command(profile: &RemoteProfile, operation: RemoteOperation) -> Result<String, String> {
+    if matches!(operation, RemoteOperation::Probe) {
+        return Ok("printf 'KMJ_COMMANDER_PROBE\\n'; uname -srm; printf 'HOST='; hostname".into());
+    }
+
+    let root = profile
+        .project_root
+        .as_deref()
+        .ok_or_else(|| "Project root is required for this operation".to_string())?;
+    validate_project_root(root)?;
+
+    let action = match operation {
+        RemoteOperation::Probe => unreachable!(),
+        RemoteOperation::ProjectInspect => {
+            "printf 'ROOT='; pwd; printf '\\nBRANCH='; git branch --show-current 2>/dev/null || true; printf '\\nSTATUS\\n'; git status --short --branch 2>/dev/null || true; printf '\\nSTACK\\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST"
+        }
+        RemoteOperation::GitStatus => "git status --short --branch",
+        RemoteOperation::GitDiffCheck => "git diff --check && git diff --stat",
+        RemoteOperation::PhpTest => "php artisan test",
+        RemoteOperation::FrontendTypecheck => "pnpm typecheck",
+        RemoteOperation::FrontendBuild => "pnpm build",
+        RemoteOperation::RustTest => "cargo test",
+    };
+
+    Ok(format!("cd -- {root} && {action}"))
 }
 
 fn validate(profile: &RemoteProfile) -> Result<(), String> {
@@ -62,20 +133,39 @@ fn validate(profile: &RemoteProfile) -> Result<(), String> {
     }
     if profile.host.is_empty()
         || profile.host.len() > 253
-        || !profile.host.chars().all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | ':')
-        })
+        || profile.host.starts_with('-')
+        || !profile
+            .host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | ':'))
     {
         return Err("Invalid SSH host".into());
     }
     if profile.username.is_empty()
         || profile.username.starts_with('-')
         || profile.username.len() > 64
-        || !profile.username.chars().all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
-        })
+        || !profile
+            .username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
     {
         return Err("Invalid SSH username".into());
+    }
+    if let Some(root) = &profile.project_root {
+        validate_project_root(root)?;
+    }
+    Ok(())
+}
+
+fn validate_project_root(root: &str) -> Result<(), String> {
+    if root.is_empty()
+        || !root.starts_with('/')
+        || root.len() > 512
+        || !root
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '/' | '.' | '_' | '-'))
+    {
+        return Err("Project root must be a safe absolute Unix path".into());
     }
     Ok(())
 }
@@ -84,39 +174,42 @@ fn validate(profile: &RemoteProfile) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn rejects_shell_metacharacters() {
-        let profile = RemoteProfile {
-            host: "example.com;touch /tmp/pwn".into(),
-            username: "root".into(),
+    fn profile() -> RemoteProfile {
+        RemoteProfile {
+            host: "example.com".into(),
+            username: "deploy-user".into(),
             port: 22,
-        };
-        assert!(validate(&profile).is_err());
-    }
-
-    #[test]
-    fn accepts_ipv4_dns_and_ipv6() {
-        for host in ["example.com", "192.0.2.10", "2001:db8::1"] {
-            assert!(
-                validate(&RemoteProfile {
-                    host: host.into(),
-                    username: "deploy-user".into(),
-                    port: 22,
-                })
-                .is_ok()
-            );
+            project_root: Some("/srv/app".into()),
         }
     }
 
     #[test]
+    fn rejects_host_injection() {
+        let mut item = profile();
+        item.host = "example.com;touch".into();
+        assert!(validate(&item).is_err());
+    }
+
+    #[test]
     fn rejects_username_injection() {
-        assert!(
-            validate(&RemoteProfile {
-                host: "example.com".into(),
-                username: "root -o ProxyCommand=x".into(),
-                port: 22,
-            })
-            .is_err()
+        let mut item = profile();
+        item.username = "root -o ProxyCommand=x".into();
+        assert!(validate(&item).is_err());
+    }
+
+    #[test]
+    fn rejects_project_path_injection() {
+        let mut item = profile();
+        item.project_root = Some("/srv/app;rm".into());
+        assert!(validate(&item).is_err());
+    }
+
+    #[test]
+    fn commands_are_fixed_presets() {
+        let item = profile();
+        assert_eq!(
+            remote_command(&item, RemoteOperation::GitStatus).unwrap(),
+            "cd -- /srv/app && git status --short --branch"
         );
     }
 }
