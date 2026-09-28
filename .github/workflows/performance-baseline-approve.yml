@@ -115,10 +115,13 @@ jobs:
           APPROVAL_REASON: ${{ inputs.approval_reason }}
         run: |
           CANDIDATE_SHA="$(cat /tmp/candidate_sha)"
+          cat > /tmp/pr-body.md <<EOF
+          Baseline refresh proposal generated only after successful benchmark run #$CANDIDATE_RUN_ID and explicit approval by @$GITHUB_ACTOR.
+
+          Approval reason: $APPROVAL_REASON
+
+          The committed audit record contains the previous/new baseline SHA, source run, approver, accepted metrics, and SHA-256 hashes of measured evidence. Merge only after normal repository review and required checks pass.
+          EOF
           gh pr create --base main --head "$BRANCH" \
             --title "perf: refresh pinned baseline to ${CANDIDATE_SHA:0:12}" \
-            --body "Baseline refresh proposal generated only after successful benchmark run #$CANDIDATE_RUN_ID and explicit approval by @$GITHUB_ACTOR.
-
-Approval reason: $APPROVAL_REASON
-
-The committed audit record contains the previous/new baseline SHA, source run, approver, accepted metrics, and SHA-256 hashes of measured evidence. Merge only after normal repository review and required checks pass."
+            --body-file /tmp/pr-body.md
