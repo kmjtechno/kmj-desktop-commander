@@ -89,6 +89,44 @@ Principle: continuous autonomous work without giving an AI an unrestricted root 
 - Licensing/account/update metadata separated from customer execution data.
 - Clear data-retention controls and privacy boundaries.
 
+## 24x7 superfast execution architecture
+- Always-on Agent Supervisor: the VPS agent runs as a supervised service with heartbeat, watchdog, crash restart and boot-time recovery.
+- Persistent transactional queue: jobs, DAG state, retries, leases and checkpoints survive process/VPS/network restarts.
+- Zero-idle scheduler: whenever runnable safe work exists and resource limits permit it, an available worker claims it automatically.
+- Worker pool + work stealing: independent coding, test, review, build and documentation workers run concurrently without duplicating ownership.
+- Warm workers: keep common toolchains/repository metadata ready to remove repeated startup and dependency-discovery latency.
+- Test sharding: split large suites across available CPU/worker capacity, then aggregate deterministic evidence.
+- Build/test cache federation: content-addressed local cache first; optional peer/remote cache without requiring KMJ cloud.
+- Incremental semantic index: update only changed symbols/files instead of rescanning entire repositories.
+- Speculative safe verification: run likely tests/static analysis in parallel with independent work, cancel obsolete work when a newer revision supersedes it.
+- Priority lanes: production incident > failed gate > active user goal > optimization/cleanup, configurable per project.
+- Resource reservations: preserve RAM/disk/CPU headroom so parallelism never makes the VPS unusable.
+- Disk-pressure guardian: cache eviction, artifact retention and workspace cleanup before low disk can stop development.
+- Circuit breakers: repeated identical failures are quarantined instead of burning CPU/tokens forever; unrelated DAG work continues.
+- Dead-letter/blocker lane: permanently blocked nodes retain evidence and retry conditions while the main queue keeps moving.
+- Lease/fencing tokens: after reconnect/failover, stale workers cannot execute the same mutation twice.
+- Automatic stale-work cancellation when commits, requirements or dependencies invalidate an older task.
+- Scheduled maintenance lane for dependency updates, security checks, cache warming and repository health when foreground work is idle.
+- Multi-project fair scheduler so one huge project cannot starve all other projects.
+- Optional multi-VPS worker federation: add customer-controlled workers later for horizontal scale and failover; single-VPS mode remains first-class.
+- CI independence: direct agent is the fast execution path; GitHub/other CI provides independent release verification and fallback, not the normal bottleneck.
+- Local/free-first AI routing and response caching where safe, with model fallback so one unavailable provider does not stop non-model work.
+- Toolchain capsules: reproducible container/dev-environment adapters for PHP, Node, Rust, Python, Go, Java, .NET and extensible stacks.
+- Observability: queue depth, worker utilization, cache hit rate, edit-to-green latency, failure/retry rate, CPU/RAM/disk and agent uptime.
+- SLO target: recover queued safe work automatically after agent restart and keep unrelated safe work progressing through individual task failures.
+
+## Universal development acceleration
+- Repository bootstrap profiler learns the fastest verified install/test/build commands and stores them as project configuration.
+- Dependency graph + changed-symbol analysis chooses the smallest valid verification set during iteration.
+- AST/LSP-aware edits when available, falling back to validated text patches for unknown languages.
+- Preflight detects missing runtimes/dependencies before assigning expensive work.
+- Layered verification: syntax/type/static checks -> targeted tests -> affected integration tests -> full release gate.
+- Deterministic merge queue for parallel worktrees with automatic rebase/conflict classification and retest after integration.
+- Reusable golden environment definitions to reproduce a known-good project toolchain quickly.
+- Benchmark history detects performance regressions in Commander itself and in configured project gates.
+- Artifact/result deduplication prevents repeating an identical successful build/test for the same inputs.
+- Background repository maintenance only consumes spare capacity and yields immediately to foreground goals.
+
 ## Continuous-work invariant
 A blocked task MUST NOT stop unrelated safe work. Commander records the blocker, continues independent DAG nodes, retries recoverable failures, and requests approval only when the blocked operation truly requires it.
 
@@ -96,9 +134,9 @@ A blocked task MUST NOT stop unrelated safe work. Commander records the blocker,
 "Full control" means enough scoped capability to complete legitimate development/operations reliably. It does NOT mean exposing a permanent unrestricted root shell to an AI. Privileged actions use a narrow audited broker and explicit policy/approval.
 
 ## Near-term implementation order
-P0: Persistent Agent + durable queue + heartbeat/recovery + streaming protocol.
-P0: Worktree scheduler + smart test selection + failure/fix/retest loop.
-P0: Checkpoint/rollback + evidence ledger + resource scheduler.
+P0: Persistent Agent Supervisor + transactional durable queue + heartbeat/watchdog/recovery + streaming protocol.
+P0: Zero-idle worktree/worker scheduler + work stealing + smart test selection/sharding + failure/fix/retest loop.
+P0: Checkpoint/rollback + evidence ledger + resource/disk-pressure scheduler + circuit breaker/blocker lane.
 P1: Stack auto-detection/adapters + semantic code index/LSP + cache.
 P1: Privileged broker + service/deploy adapters + production health/rollback gates.
 P1: Signed updater, SBOM/provenance, secret redaction and security regression suite.
@@ -113,3 +151,5 @@ P2: Provider-neutral model router + plugin SDK + fleet/team/enterprise capabilit
 - No unrestricted AI root shell.
 - Measurably lower median edit-to-verified-result time as features ship.
 - Cross-platform release gates remain green before distribution.
+- Safe queued work resumes automatically after agent/process/network recovery.
+- Track agent uptime, queue idle-with-work time, cache hit rate and median edit-to-green latency.
