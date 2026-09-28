@@ -15,7 +15,13 @@ export interface CommanderBootstrap {
   default_plan: string;
   billing_enabled: boolean;
   execution_model: "local-first";
+  license_authority: "kmj-main-platform";
+  entitlement_protocol: "KSLP-v1";
+  entitlement_verification: "offline-ed25519";
   entitlement_refresh_seconds: number;
+  bootstrap_refresh_seconds: number;
+  bootstrap_refresh_jitter_seconds: number;
+  idle_license_heartbeat: false;
   plans: Record<string, CommanderPlan>;
   platform_support: Record<string, "full" | "companion" | "none">;
 }
@@ -24,8 +30,8 @@ export const PLATFORM_BOOTSTRAP =
   "https://kmjtechno.com/commander/bootstrap.json";
 
 const CACHE_KEY = "kmj.commander.bootstrap.v1";
-const MIN_REFRESH_MS = 24 * 60 * 60 * 1000;
-const MAX_JITTER_MS = 6 * 60 * 60 * 1000;
+const FALLBACK_REFRESH_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_JITTER_MS = 6 * 60 * 60 * 1000;
 
 interface CachedBootstrap {
   value: CommanderBootstrap;
@@ -46,10 +52,18 @@ function readCache(): CachedBootstrap | null {
 
 function writeCache(value: CommanderBootstrap) {
   try {
-    const jitter = Math.floor(Math.random() * MAX_JITTER_MS);
+    const refreshMs = Math.max(
+      FALLBACK_REFRESH_MS,
+      (value.bootstrap_refresh_seconds || 0) * 1000,
+    );
+    const jitterWindowMs = Math.max(
+      0,
+      (value.bootstrap_refresh_jitter_seconds || 0) * 1000,
+    ) || FALLBACK_JITTER_MS;
+    const jitter = Math.floor(Math.random() * jitterWindowMs);
     const cached: CachedBootstrap = {
       value,
-      refresh_after: Date.now() + MIN_REFRESH_MS + jitter,
+      refresh_after: Date.now() + refreshMs + jitter,
     };
     globalThis.localStorage?.setItem(CACHE_KEY, JSON.stringify(cached));
   } catch {
