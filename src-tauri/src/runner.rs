@@ -59,7 +59,7 @@ pub struct RemoteResult {
     pub output: String,
 }
 
-pub fn execute(profile: &RemoteProfile, operation: RemoteOperation) -> Result<RemoteResult, String> {
+pub fn execute(\n    profile: &RemoteProfile,\n    operation: RemoteOperation,\n) -> Result<RemoteResult, String> {
     validate(profile)?;
     let command = remote_command(profile, operation)?;
     let port = profile.port.to_string();
