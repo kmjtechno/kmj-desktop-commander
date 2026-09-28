@@ -1,13 +1,14 @@
 use crate::{
+    CLOUDOS_ROOT,
     audit::{self, AuditRecord},
-    auth, execute_named, now_secs, output_hash, CLOUDOS_ROOT,
+    auth, execute_named, now_secs, output_hash,
 };
 use axum::{
+    Json, Router,
     extract::State,
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -206,19 +207,12 @@ async fn execute(
         .into_response()
 }
 
-async fn audit_log(
-    State(state): State<GatewayState>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
+async fn audit_log(State(state): State<GatewayState>, headers: HeaderMap) -> impl IntoResponse {
     if let Err((status, error)) = authenticate(&headers, &state, "audit:read") {
         return (status, Json(serde_json::json!({"error": error}))).into_response();
     }
     match audit::read_bounded(&state.audit_path, 100) {
-        Ok(lines) => (
-            StatusCode::OK,
-            Json(serde_json::json!({"records": lines})),
-        )
-            .into_response(),
+        Ok(lines) => (StatusCode::OK, Json(serde_json::json!({"records": lines}))).into_response(),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": error})),
