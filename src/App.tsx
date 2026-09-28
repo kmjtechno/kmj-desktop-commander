@@ -164,7 +164,7 @@ export function App() {
               <span>{commercial.billing_enabled ? "UPGRADES AVAILABLE" : "PUBLIC BETA · BILLING OFF"}</span>
               <a href="https://kmjtechno.com/products" target="_blank" rel="noreferrer">VIEW KMJ PRODUCTS ↗</a>
             </div>
-          </section>
+          </section>}
 
           <form className="profileForm" onSubmit={save}>
             <label>PROFILE NAME<input value={draft.label} onChange={(e) => setDraft({...draft, label:e.target.value})} placeholder="KMJ Platform" required /></label>
