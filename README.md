@@ -40,7 +40,12 @@ The webview expresses intent. Native operations are classified and authorized in
 - minimal Tauri capability surface
 - CI gates for frontend and Rust
 - architecture and security documentation
-- interfaces designed for future remote runners and Kristi AI orchestration
+- saved server/project profiles without stored credentials
+- policy-gated OpenSSH remote operations
+- project inspection, Git status/diff checks, PHP/TypeScript/build/Rust quality gates
+- persistent local job history
+- Windows NSIS installer artifact workflow
+- interfaces designed for future Kristi AI orchestration
 
 ## Roadmap
 
