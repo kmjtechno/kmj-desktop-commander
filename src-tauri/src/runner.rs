@@ -75,6 +75,10 @@ pub fn execute(
             "StrictHostKeyChecking=yes",
             "-o",
             "ConnectTimeout=10",
+            "-o",
+            "ServerAliveInterval=15",
+            "-o",
+            "ServerAliveCountMax=2",
             "-p",
             &port,
             "-l",
@@ -117,7 +121,7 @@ fn remote_command(profile: &RemoteProfile, operation: RemoteOperation) -> Result
     let action = match operation {
         RemoteOperation::Probe => unreachable!(),
         RemoteOperation::ProjectInspect => {
-            r"printf 'ROOT='; pwd; printf '\nBRANCH='; git branch --show-current 2>/dev/null || true; printf '\nSTATUS\n'; git status --short --branch 2>/dev/null || true; printf '\nSTACK\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST"
+            r"printf 'ROOT='; pwd; printf '\nBRANCH='; git branch --show-current 2>/dev/null || true; printf '\nSTATUS\n'; git status --short --branch 2>/dev/null || true; printf '\nSTACK\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST; true"
         }
         RemoteOperation::GitStatus => "git status --short --branch",
         RemoteOperation::GitDiffCheck => "git diff --check && git diff --stat",
@@ -205,6 +209,13 @@ mod tests {
         let mut item = profile();
         item.project_root = Some("/srv/app;rm".into());
         assert!(validate(&item).is_err());
+    }
+
+    #[test]
+    fn project_inspection_is_stack_agnostic() {
+        let item = profile();
+        let command = remote_command(&item, RemoteOperation::ProjectInspect).unwrap();
+        assert!(command.ends_with("; true"));
     }
 
     #[test]
