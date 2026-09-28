@@ -11,6 +11,7 @@ pub struct TokenClaims {
     pub sub: String,
     pub aud: String,
     pub server: String,
+    pub device: String,
     pub iat: u64,
     pub nbf: u64,
     pub exp: u64,
@@ -58,7 +59,11 @@ fn validate_claims(claims: &TokenClaims, now: u64, server: &str) -> Result<(), S
     if claims.iss != "kmj-commander" || claims.aud != "kmj-vps" || claims.server != server {
         return Err("token binding denied".into());
     }
-    if claims.sub.is_empty() || claims.jti.len() < 16 || claims.scopes.is_empty() {
+    if claims.sub.is_empty()
+        || claims.device.is_empty()
+        || claims.jti.len() < 16
+        || claims.scopes.is_empty()
+    {
         return Err("incomplete token claims".into());
     }
     if claims.exp <= claims.iat || claims.exp.saturating_sub(claims.iat) > 300 {
@@ -80,6 +85,7 @@ mod tests {
             sub: "chatgpt".into(),
             aud: "kmj-vps".into(),
             server: "lab".into(),
+            device: "chatgpt-test-device".into(),
             iat: 100,
             nbf: 100,
             exp: 400,
