@@ -59,7 +59,10 @@ pub struct RemoteResult {
     pub output: String,
 }
 
-pub fn execute(\n    profile: &RemoteProfile,\n    operation: RemoteOperation,\n) -> Result<RemoteResult, String> {
+pub fn execute(
+    profile: &RemoteProfile,
+    operation: RemoteOperation,
+) -> Result<RemoteResult, String> {
     validate(profile)?;
     let command = remote_command(profile, operation)?;
     let port = profile.port.to_string();
@@ -85,7 +88,8 @@ pub fn execute(\n    profile: &RemoteProfile,\n    operation: RemoteOperation,\n
     let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
     if !output.stderr.is_empty() {
         if !text.is_empty() {
-            text.push('\n');
+            text.push('
+');
         }
         text.push_str(&String::from_utf8_lossy(&output.stderr));
     }
@@ -102,7 +106,8 @@ pub fn execute(\n    profile: &RemoteProfile,\n    operation: RemoteOperation,\n
 
 fn remote_command(profile: &RemoteProfile, operation: RemoteOperation) -> Result<String, String> {
     if matches!(operation, RemoteOperation::Probe) {
-        return Ok("printf 'KMJ_COMMANDER_PROBE\\n'; uname -srm; printf 'HOST='; hostname".into());
+        return Ok("printf 'KMJ_COMMANDER_PROBE\
+'; uname -srm; printf 'HOST='; hostname".into());
     }
 
     let root = profile
@@ -114,7 +119,12 @@ fn remote_command(profile: &RemoteProfile, operation: RemoteOperation) -> Result
     let action = match operation {
         RemoteOperation::Probe => unreachable!(),
         RemoteOperation::ProjectInspect => {
-            "printf 'ROOT='; pwd; printf '\\nBRANCH='; git branch --show-current 2>/dev/null || true; printf '\\nSTATUS\\n'; git status --short --branch 2>/dev/null || true; printf '\\nSTACK\\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST"
+            "printf 'ROOT='; pwd; printf '\
+BRANCH='; git branch --show-current 2>/dev/null || true; printf '\
+STATUS\
+'; git status --short --branch 2>/dev/null || true; printf '\
+STACK\
+'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST"
         }
         RemoteOperation::GitStatus => "git status --short --branch",
         RemoteOperation::GitDiffCheck => "git diff --check && git diff --stat",
