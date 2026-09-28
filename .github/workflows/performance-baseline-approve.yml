@@ -11,6 +11,10 @@ on:
         description: "Human review/approval reason"
         required: true
         type: string
+      approval:
+        description: "Type APPROVE BASELINE REFRESH"
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -22,6 +26,10 @@ jobs:
     runs-on: ubuntu-24.04
     environment: performance-baseline-approval
     steps:
+      - name: Require explicit approval phrase
+        env:
+          APPROVAL: ${{ inputs.approval }}
+        run: test "$APPROVAL" = "APPROVE BASELINE REFRESH"
       - uses: actions/checkout@v4
         with:
           ref: main
