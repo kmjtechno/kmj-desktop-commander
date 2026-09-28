@@ -56,3 +56,24 @@ jobs:
           node-version: 24
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck
+
+  headless:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: headless
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - run: cargo run -- probe
+      - name: Fail closed without signing secret
+        run: |
+          if cargo run -- gateway; then
+            echo "gateway unexpectedly started without a signing secret" >&2
+            exit 1
+          fi
