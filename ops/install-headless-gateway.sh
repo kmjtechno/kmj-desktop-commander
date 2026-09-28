@@ -26,6 +26,11 @@ if [[ ! -f "$env_file" ]]; then
   chmod 0600 "$env_file"
 fi
 
+if ! grep -q '^KMJ_COMMANDER_DEVICES_PATH=' "$env_file"; then
+  printf 'KMJ_COMMANDER_DEVICES_PATH=%s/.local/state/kmj-commander/devices.json\n' "$HOME" >> "$env_file"
+fi
+chmod 0600 "$env_file"
+
 systemctl --user daemon-reload
 systemctl --user enable --now kmj-commander-headless.service
 curl --fail --silent --show-error http://127.0.0.1:8770/v1/health
