@@ -44,7 +44,7 @@ jobs:
       - name: Install benchmark dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb strace
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb strace dbus-daemon
       - name: Install candidate dependencies
         run: pnpm install --no-frozen-lockfile
       - name: Install baseline dependencies
@@ -76,14 +76,14 @@ jobs:
       - name: Measure pinned baseline on same runner
         working-directory: baseline-src
         run: |
-          python3 "$GITHUB_WORKSPACE/scripts/perf/linux-harness.py" \
+          dbus-run-session -- python3 "$GITHUB_WORKSPACE/scripts/perf/linux-harness.py" \
             --config "$GITHUB_WORKSPACE/performance-budgets.json" \
             --binary src-tauri/target/release/kmj-desktop-commander \
             --bundle-dir src-tauri/target/release/bundle \
             --output-dir "$GITHUB_WORKSPACE/performance-artifacts/baseline"
       - name: Measure candidate on same runner
         run: |
-          python3 scripts/perf/linux-harness.py \
+          dbus-run-session -- python3 scripts/perf/linux-harness.py \
             --binary src-tauri/target/release/kmj-desktop-commander \
             --bundle-dir src-tauri/target/release/bundle \
             --output-dir performance-artifacts/current
