@@ -135,6 +135,10 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: /tmp/baseline-change-audit.json
+      - name: Verify signed audit manifest before proposing baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify /tmp/baseline-change-audit.json --repo "$GITHUB_REPOSITORY"
       - name: Commit signed manifest and Sigstore bundle
         run: |
           AUDIT_NAME="$(cat /tmp/audit_filename)"
