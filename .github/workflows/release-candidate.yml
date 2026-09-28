@@ -41,8 +41,19 @@ jobs:
           if ($install.ExitCode -ne 0) { throw "Silent install failed: $($install.ExitCode)" }
           $binary = Get-ChildItem $installDir -Recurse -Filter "kmj-desktop-commander.exe" | Select-Object -First 1
           if (-not $binary) { throw "Installed executable missing" }
-          $headers = & dumpbin /headers $binary.FullName | Out-String
-          if ($headers -notmatch "machine \(x64\)") { throw "Installed executable is not x64" }
+          $stream = [System.IO.File]::OpenRead($binary.FullName)
+          try {
+            $reader = [System.IO.BinaryReader]::new($stream)
+            $stream.Position = 0x3C
+            $peOffset = $reader.ReadInt32()
+            $stream.Position = $peOffset
+            if ($reader.ReadUInt32() -ne 0x00004550) { throw "Invalid PE signature" }
+            $machine = $reader.ReadUInt16()
+            if ($machine -ne 0x8664) { throw ("Installed executable is not x64; PE machine=0x{0:X4}" -f $machine) }
+          } finally {
+            if ($reader) { $reader.Dispose() } else { $stream.Dispose() }
+          }
+          Write-Host "WINDOWS_ARCH=x86_64"
           $app = Start-Process -FilePath $binary.FullName -PassThru
           Start-Sleep -Seconds 5
           if ($app.HasExited) { throw "Commander exited during Windows launch smoke test: $($app.ExitCode)" }
