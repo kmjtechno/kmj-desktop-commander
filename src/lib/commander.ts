@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type RiskLevel = "read_only" | "reversible" | "privileged" | "destructive";
-export type JobStatus = "running" | "succeeded" | "failed";
+export type JobStatus = "running" | "succeeded" | "failed" | "interrupted";
 export type RemoteOperation =
   | "probe"
   | "project_inspect"
