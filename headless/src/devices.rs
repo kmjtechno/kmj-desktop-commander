@@ -47,7 +47,8 @@ fn save(path: &Path, registry: &Registry) -> Result<(), String> {
         .open(&temp)
         .map_err(|error| error.to_string())?;
     let content = serde_json::to_vec_pretty(registry).map_err(|error| error.to_string())?;
-    file.write_all(&content).map_err(|error| error.to_string())?;
+    file.write_all(&content)
+        .map_err(|error| error.to_string())?;
     file.sync_all().map_err(|error| error.to_string())?;
     fs::rename(temp, path).map_err(|error| error.to_string())
 }
