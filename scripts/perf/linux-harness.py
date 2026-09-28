@@ -15,6 +15,15 @@ def descendants(root):
                 if ppid in wanted: wanted.add(pid)
             except Exception: pass
         if len(wanted)==before: return wanted
+def find_executable_descendant(root,binary,timeout=3):
+    target=str(binary.resolve());end=time.monotonic()+timeout
+    while time.monotonic()<end:
+        for pid in descendants(root)-{root}:
+            try:
+                if os.path.realpath(f"/proc/{pid}/exe")==target:return pid
+            except Exception:pass
+        time.sleep(.02)
+    raise RuntimeError("Commander child process not found beneath trace wrapper")
 def sample(root):
     ticks=0; rss=0
     for pid in descendants(root):
@@ -64,10 +73,10 @@ def idle(binary,base,warmup,duration,interval):
     trace=base/"network.strace";state=base/"idle";state.mkdir(parents=True,exist_ok=True)
     p=launch(binary,state,["strace","-f","-ttt","-e","trace=network","-o",str(trace),str(binary)])
     try:
-        ready(p);time.sleep(warmup);idle_start=time.time();hz=os.sysconf(os.sysconf_names["SC_CLK_TCK"])
-        cpus=[];rss=[];prev_t,_=sample(p.pid);prev=time.monotonic();end=prev+duration
+        ready(p);app_pid=find_executable_descendant(p.pid,binary);time.sleep(warmup);idle_start=time.time();hz=os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+        cpus=[];rss=[];prev_t,_=sample(app_pid);prev=time.monotonic();end=prev+duration
         while time.monotonic()<end:
-            time.sleep(interval);now=time.monotonic();ticks,mem=sample(p.pid);elapsed=max(now-prev,.001)
+            time.sleep(interval);now=time.monotonic();ticks,mem=sample(app_pid);elapsed=max(now-prev,.001)
             cpus.append(max(0,(ticks-prev_t)/hz/elapsed*100));rss.append(mem);prev_t=ticks;prev=now
     finally:stop(p)
     outbound=0
