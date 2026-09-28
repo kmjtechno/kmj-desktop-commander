@@ -14,7 +14,7 @@ if (!/^\/[A-Za-z0-9/._-]{1,511}$/.test(projectRoot)) throw new Error("Invalid KM
 
 const checks: Check[] = [
   { name: "SERVER_PROBE", command: "printf 'HOSTNAME='; hostname; printf 'KERNEL='; uname -srm; printf 'UPTIME='; uptime -p 2>/dev/null || true" },
-  { name: "PROJECT_INSPECT", command: "printf 'BRANCH='; git branch --show-current 2>/dev/null || true; printf '\\nSTATUS\\n'; git status --short --branch 2>/dev/null || true; printf '\\nSTACK\\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST" },
+  { name: "PROJECT_INSPECT", command: "printf 'BRANCH='; git branch --show-current 2>/dev/null || true; printf '\\nSTATUS\\n'; git status --short --branch 2>/dev/null || true; printf '\\nSTACK\\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST; true" },
   { name: "GIT_STATUS", command: "git status --short --branch" },
   { name: "GIT_DIFF_CHECK", command: "git diff --check && git diff --stat" },
 ];
