@@ -22,6 +22,13 @@ struct SystemProbe {
 }
 
 #[tauri::command]
+fn performance_ready() {
+    if std::env::var("KMJ_PERF_HARNESS").as_deref() == Ok("1") {
+        println!("KMJ_PERF_UI_READY");
+    }
+}
+
+#[tauri::command]
 fn system_probe() -> SystemProbe {
     SystemProbe {
         app_version: env!("CARGO_PKG_VERSION"),
@@ -131,6 +138,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            performance_ready,
             system_probe,
             evaluate_operation,
             verify_entitlement,
