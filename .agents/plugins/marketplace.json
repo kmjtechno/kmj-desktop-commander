@@ -1,0 +1,20 @@
+{
+  "name": "kmj-technologies",
+  "plugins": [
+    {
+      "name": "kmj-desktop-commander",
+      "source": {
+        "source": "local",
+        "path": "../../plugins/kmj-desktop-commander"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools",
+      "interface": {
+        "displayName": "KMJ Desktop Commander"
+      }
+    }
+  ]
+}

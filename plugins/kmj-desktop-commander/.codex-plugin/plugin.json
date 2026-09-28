@@ -1,0 +1,42 @@
+{
+  "name": "kmj-desktop-commander",
+  "version": "0.1.0",
+  "description": "Policy-controlled autonomous engineering workflows for customer-controlled development machines and servers.",
+  "author": {
+    "name": "KMJ TECHNO",
+    "url": "https://kmjtechno.com"
+  },
+  "homepage": "https://kmjtechno.com/products",
+  "repository": "https://github.com/kmjtechno/kmj-desktop-commander",
+  "license": "Apache-2.0",
+  "keywords": [
+    "developer-tools",
+    "automation",
+    "ssh",
+    "devops",
+    "engineering",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "KMJ Desktop Commander",
+    "shortDescription": "Safe autonomous engineering on your own machines and servers.",
+    "longDescription": "Use KMJ Desktop Commander to inspect projects, plan verified engineering work, run allow-listed quality gates, and coordinate policy-controlled changes on customer-controlled development systems. Privileged and destructive operations remain approval-gated.",
+    "developerName": "KMJ TECHNO",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://kmjtechno.com",
+    "privacyPolicyURL": "https://kmjtechno.com/privacy",
+    "termsOfServiceURL": "https://kmjtechno.com/terms",
+    "defaultPrompt": [
+      "Use KMJ Desktop Commander to inspect my project and tell me the safest next engineering task.",
+      "Use KMJ Desktop Commander to run the relevant quality gates and summarize verified failures.",
+      "Use KMJ Desktop Commander to fix a safe project issue, retest it, and report the evidence."
+    ],
+    "brandColor": "#06080B",
+    "logo": "./assets/commander.svg"
+  }
+}
