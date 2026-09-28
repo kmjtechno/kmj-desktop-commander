@@ -225,8 +225,7 @@ async fn main() {
             _ => Err("subject and comma-separated scopes required".into()),
         },
         "gateway" => {
-            let bind =
-                env::var("KMJ_COMMANDER_BIND").unwrap_or_else(|_| "127.0.0.1:8770".into());
+            let bind = env::var("KMJ_COMMANDER_BIND").unwrap_or_else(|_| "127.0.0.1:8770".into());
             let server =
                 env::var("KMJ_COMMANDER_SERVER_ID").unwrap_or_else(|_| "kmjtechnonet".into());
             let audit_path =
