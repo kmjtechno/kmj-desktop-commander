@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <radialGradient id="bg" cx="72%" cy="0%" r="70%">
+      <stop offset="0" stop-color="#13233f"/>
+      <stop offset=".45" stop-color="#0a0f19"/>
+      <stop offset="1" stop-color="#070a11"/>
+    </radialGradient>
+    <style>
+      .t{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#f4f7fb}
+      .m{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#7890ad}
+      .line{stroke:#1d2635;stroke-width:1}
+      .panel{fill:#080d15;stroke:#1d2635;stroke-width:1}
+      .input{fill:#090e17;stroke:#263249;stroke-width:1}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="42" y="38" class="m" font-size="12" font-weight="700" letter-spacing="2">KMJ TECHNO</text>
+  <text x="42" y="64" class="t" font-size="22" font-weight="700">Desktop Commander</text>
+  <circle cx="1018" cy="53" r="5" fill="#5ee6a8"/>
+  <text x="1032" y="57" class="m" font-size="11" font-weight="700" letter-spacing="1.5">POLICY ENFORCED</text>
+  <line x1="42" y1="86" x2="1158" y2="86" class="line"/>
+
+  <text x="42" y="126" class="m" font-size="12" font-weight="700" letter-spacing="2">ENGINEERING CONTROL PLANE</text>
+  <text x="42" y="194" class="t" font-size="58" font-weight="800">Operate safely.</text>
+  <text x="42" y="256" class="t" font-size="58" font-weight="800">Move fast.</text>
+  <text x="42" y="302" class="m" font-size="16">Remote engineering operations cross a native Rust policy boundary before execution.</text>
+
+  <line x1="866" y1="116" x2="866" y2="320" class="line"/>
+  <text x="900" y="162" class="m" font-size="11" font-weight="700" letter-spacing="1.5">COMMANDER CORE</text>
+  <text x="900" y="204" class="t" font-size="30" font-weight="800">ONLINE</text>
+  <text x="900" y="236" class="m" font-size="11">native desktop · policy gated</text>
+  <line x1="42" y1="340" x2="1158" y2="340" class="line"/>
+
+  <rect x="42" y="370" width="542" height="220" class="panel"/>
+  <text x="66" y="402" class="m" font-size="11" font-weight="700" letter-spacing="1.6">REMOTE PROBE</text>
+  <text x="542" y="402" class="m" font-size="11" font-weight="700">01</text>
+
+  <text x="66" y="437" class="m" font-size="9" font-weight="700">HOST</text>
+  <rect x="66" y="446" width="220" height="38" class="input"/>
+  <text x="78" y="470" class="t" font-size="12">server.example.com</text>
+
+  <text x="300" y="437" class="m" font-size="9" font-weight="700">USER</text>
+  <rect x="300" y="446" width="150" height="38" class="input"/>
+  <text x="312" y="470" class="t" font-size="12">deploy</text>
+
+  <text x="464" y="437" class="m" font-size="9" font-weight="700">PORT</text>
+  <rect x="464" y="446" width="96" height="38" class="input"/>
+  <text x="476" y="470" class="t" font-size="12">22</text>
+
+  <rect x="66" y="506" width="494" height="40" rx="2" fill="#10231f" stroke="#315d55"/>
+  <text x="226" y="531" font-family="Inter,Segoe UI,Arial,sans-serif" fill="#77e5b4" font-size="11" font-weight="800" letter-spacing="1.2">RUN SAFE PROBE</text>
+  <text x="66" y="570" class="m" font-size="10">OpenSSH agent/config · trusted host keys · no password prompts</text>
+
+  <rect x="614" y="370" width="544" height="220" class="panel"/>
+  <text x="638" y="402" class="m" font-size="11" font-weight="700" letter-spacing="1.6">PERSISTENT JOBS</text>
+  <text x="1115" y="402" class="m" font-size="11" font-weight="700">02</text>
+  <line x1="638" y1="430" x2="1134" y2="430" class="line"/>
+  <text x="638" y="456" class="t" font-size="12" font-weight="700">remote.probe</text>
+  <text x="638" y="476" class="m" font-size="10">server.example.com</text>
+  <text x="1044" y="461" font-family="Inter,Segoe UI,Arial,sans-serif" fill="#5ee6a8" font-size="9" font-weight="700">SUCCEEDED</text>
+  <line x1="638" y1="494" x2="1134" y2="494" class="line"/>
+  <text x="638" y="520" class="t" font-size="12" font-weight="700">policy.evaluate</text>
+  <text x="638" y="540" class="m" font-size="10">remote.probe</text>
+  <text x="1044" y="525" font-family="Inter,Segoe UI,Arial,sans-serif" fill="#5ee6a8" font-size="9" font-weight="700">SUCCEEDED</text>
+
+  <rect x="42" y="610" width="1116" height="82" class="panel"/>
+  <text x="66" y="638" class="m" font-size="11" font-weight="700" letter-spacing="1.6">TRUST BOUNDARY</text>
+  <text x="66" y="672" class="t" font-size="12" font-weight="700">UI</text>
+  <text x="175" y="672" class="m" font-size="16">→</text>
+  <text x="250" y="672" class="t" font-size="12" font-weight="700">RUST POLICY</text>
+  <text x="405" y="672" class="m" font-size="16">→</text>
+  <text x="480" y="672" class="t" font-size="12" font-weight="700">OPENSSH</text>
+  <text x="610" y="672" class="m" font-size="16">→</text>
+  <text x="685" y="672" class="t" font-size="12" font-weight="700">JOB LEDGER</text>
+  <text x="1080" y="672" class="m" font-size="10">UI PREVIEW</text>
+</svg>
