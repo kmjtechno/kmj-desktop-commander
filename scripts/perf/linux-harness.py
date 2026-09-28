@@ -81,7 +81,7 @@ def idle(binary,base,warmup,duration,interval):
     finally:stop(p)
     outbound=0
     for line in trace.read_text(errors="replace").splitlines():
-        m=re.match(r"^(?:\[pid\s+\d+\]\s+)?(\d+\.\d+)\s+.*connect\(",line)
+        m=re.match(r"^(?:(?:\[pid\s+\d+\]|\d+)\s+)?(\d+\.\d+)\s+.*connect\(",line)
         if m and float(m.group(1))>=idle_start and ("AF_INET" in line or "AF_INET6" in line):outbound+=1
     return cpus,rss,outbound,trace
 def mib(p):return p.stat().st_size/1048576
