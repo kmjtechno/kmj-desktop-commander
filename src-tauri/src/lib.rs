@@ -114,7 +114,7 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             app.manage(Mutex::new(JobStore::load(data_dir.join("jobs.json"))));
-            app.manage(Mutex::new(ProfileStore::load(data_dir.join("profiles.json"))));
+            app.manage(Mutex::new(ProfileStore::load(\n                data_dir.join("profiles.json"),\n            )));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
