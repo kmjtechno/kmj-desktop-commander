@@ -21,7 +21,7 @@ export interface CommanderBootstrap {
 }
 
 export const PLATFORM_BOOTSTRAP =
-  "https://kmjtechno.com/api/public/commander/bootstrap";
+  "https://kmjtechno.com/commander/bootstrap.json";
 
 export async function fetchCommanderBootstrap(): Promise<CommanderBootstrap> {
   const response = await fetch(PLATFORM_BOOTSTRAP, {
