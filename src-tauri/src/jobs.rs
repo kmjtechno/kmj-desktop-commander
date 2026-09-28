@@ -5,12 +5,13 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum JobStatus {
     Running,
     Succeeded,
     Failed,
+    Interrupted,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -31,11 +32,29 @@ pub struct JobStore {
 
 impl JobStore {
     pub fn load(path: PathBuf) -> Self {
-        let jobs = fs::read_to_string(&path)
+        let mut jobs: Vec<JobRecord> = fs::read_to_string(&path)
             .ok()
             .and_then(|raw| serde_json::from_str(&raw).ok())
             .unwrap_or_default();
-        Self { path, jobs }
+
+        // A process cannot truthfully leave an operation "running" across a restart.
+        // Fence stale work as interrupted so it can never be mistaken for a live lease.
+        let now = now_ms();
+        let mut recovered = false;
+        for job in &mut jobs {
+            if job.status == JobStatus::Running {
+                job.status = JobStatus::Interrupted;
+                job.finished_ms = Some(now);
+                job.summary = Some("Interrupted by Commander restart; safe to inspect/retry.".into());
+                recovered = true;
+            }
+        }
+
+        let store = Self { path, jobs };
+        if recovered {
+            let _ = store.persist();
+        }
+        store
     }
 
     pub fn start(&mut self, operation: &str, target: &str) -> Result<String, String> {
@@ -79,7 +98,9 @@ impl JobStore {
             fs::create_dir_all(parent).map_err(|error| error.to_string())?;
         }
         let json = serde_json::to_vec_pretty(&self.jobs).map_err(|error| error.to_string())?;
-        fs::write(&self.path, json).map_err(|error| error.to_string())
+        let tmp = self.path.with_extension("json.tmp");
+        fs::write(&tmp, json).map_err(|error| error.to_string())?;
+        fs::rename(&tmp, &self.path).map_err(|error| error.to_string())
     }
 }
 
@@ -90,4 +111,39 @@ fn now_ms() -> u64 {
         .as_millis()
         .try_into()
         .unwrap_or(u64::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_path(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("kmj-commander-{name}-{}.json", now_ms()))
+    }
+
+    #[test]
+    fn persists_completed_jobs_atomically() {
+        let path = temp_path("persist");
+        let mut store = JobStore::load(path.clone());
+        let id = store.start("git.status", "deploy@example:22").unwrap();
+        store.finish(&id, true, "clean".into()).unwrap();
+
+        let restored = JobStore::load(path.clone()).list();
+        assert_eq!(restored.len(), 1);
+        assert_eq!(restored[0].status, JobStatus::Succeeded);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn restart_fences_stale_running_jobs() {
+        let path = temp_path("recovery");
+        let mut store = JobStore::load(path.clone());
+        store.start("test.run", "deploy@example:22").unwrap();
+        drop(store);
+
+        let restored = JobStore::load(path.clone()).list();
+        assert_eq!(restored[0].status, JobStatus::Interrupted);
+        assert!(restored[0].finished_ms.is_some());
+        let _ = fs::remove_file(path);
+    }
 }
