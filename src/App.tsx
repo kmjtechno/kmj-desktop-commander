@@ -67,6 +67,12 @@ export function App() {
   async function save(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    const activePlan = commercial?.plans[commercial.default_plan];
+    const isNewProfile = !draft.id;
+    if (isNewProfile && activePlan && profiles.length >= activePlan.server_profiles) {
+      setError(`${activePlan.label} plan supports up to ${activePlan.server_profiles} server profiles. Upgrade to add more.`);
+      return;
+    }
     const profile = {
       ...draft,
       id: draft.id || `profile-${Date.now()}`,
@@ -147,6 +153,18 @@ export function App() {
             <div><span className="eyebrow">SAFE REMOTE OPERATIONS</span><h2>{draft.label || "Configure a server"}</h2></div>
             <span className="trustBadge">DENY BY DEFAULT</span>
           </div>
+
+          {commercial && <section className="commercialStrip" aria-label="Commander plan">
+            <div>
+              <span className="eyebrow">LOCAL-FIRST PLAN</span>
+              <strong>{commercial.plans[commercial.default_plan]?.label ?? commercial.default_plan}</strong>
+              <small>{profiles.length}/{commercial.plans[commercial.default_plan]?.server_profiles ?? "—"} server profiles · manual operations unlimited</small>
+            </div>
+            <div className="commercialActions">
+              <span>{commercial.billing_enabled ? "UPGRADES AVAILABLE" : "PUBLIC BETA · BILLING OFF"}</span>
+              <a href="https://kmjtechno.com/products" target="_blank" rel="noreferrer">VIEW KMJ PRODUCTS ↗</a>
+            </div>
+          </section>
 
           <form className="profileForm" onSubmit={save}>
             <label>PROFILE NAME<input value={draft.label} onChange={(e) => setDraft({...draft, label:e.target.value})} placeholder="KMJ Platform" required /></label>
