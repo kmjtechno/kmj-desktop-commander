@@ -25,10 +25,14 @@ pub fn probe(profile: &RemoteProfile) -> Result<RemoteProbeResult, String> {
     let port = profile.port.to_string();
     let output = Command::new("ssh")
         .args([
-            "-o", "BatchMode=yes",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ConnectTimeout=8",
-            "-p", &port,
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ConnectTimeout=8",
+            "-p",
+            &port,
             &target,
             PROBE_COMMAND,
         ])
@@ -93,20 +97,26 @@ mod tests {
     #[test]
     fn accepts_ipv4_dns_and_ipv6() {
         for host in ["example.com", "192.0.2.10", "2001:db8::1"] {
-            assert!(validate(&RemoteProfile {
-                host: host.into(),
-                username: "deploy-user".into(),
-                port: 22,
-            }).is_ok());
+            assert!(
+                validate(&RemoteProfile {
+                    host: host.into(),
+                    username: "deploy-user".into(),
+                    port: 22,
+                })
+                .is_ok()
+            );
         }
     }
 
     #[test]
     fn rejects_username_injection() {
-        assert!(validate(&RemoteProfile {
-            host: "example.com".into(),
-            username: "root -o ProxyCommand=x".into(),
-            port: 22,
-        }).is_err());
+        assert!(
+            validate(&RemoteProfile {
+                host: "example.com".into(),
+                username: "root -o ProxyCommand=x".into(),
+                port: 22,
+            })
+            .is_err()
+        );
     }
 }
