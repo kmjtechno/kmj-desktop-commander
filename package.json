@@ -8,7 +8,10 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "icons": "tauri icon src-tauri/icons/source.svg"
+    "icons": "tauri icon src-tauri/icons/source.svg",
+    "perf:budget": "node scripts/check-performance-budgets.mjs config",
+    "perf:frontend": "node scripts/check-performance-budgets.mjs frontend",
+    "perf:metrics": "node scripts/check-performance-budgets.mjs metrics"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
