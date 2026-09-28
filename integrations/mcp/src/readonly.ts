@@ -14,6 +14,7 @@ if (!/^\/[A-Za-z0-9/._-]{1,511}$/.test(projectRoot)) throw new Error("Invalid KM
 
 const checks: Check[] = [
   { name: "SERVER_PROBE", command: "printf 'HOSTNAME='; hostname; printf 'KERNEL='; uname -srm; printf 'UPTIME='; uptime -p 2>/dev/null || true" },
+  { name: "CONTROL_CAPABILITIES", command: "printf 'USER='; id -un; printf 'UID='; id -u; printf 'PROJECT_WRITABLE='; test -w . && echo yes || echo no; printf 'SYSTEMCTL='; command -v systemctl >/dev/null && echo yes || echo no; printf 'SUDO_NONINTERACTIVE='; if sudo -n true >/dev/null 2>&1; then echo yes; else echo no; fi; printf 'GIT='; command -v git >/dev/null && echo yes || echo no; printf 'PHP='; command -v php >/dev/null && echo yes || echo no; printf 'NODE='; command -v node >/dev/null && echo yes || echo no" },
   { name: "PROJECT_INSPECT", command: "printf 'BRANCH='; git branch --show-current 2>/dev/null || true; printf '\\nSTATUS\\n'; git status --short --branch 2>/dev/null || true; printf '\\nSTACK\\n'; test -f composer.json && echo PHP; test -f package.json && echo NODE; test -f Cargo.toml && echo RUST; true" },
   { name: "GIT_STATUS", command: "git status --short --branch" },
   { name: "GIT_DIFF_CHECK", command: "git diff --check && git diff --stat" },
