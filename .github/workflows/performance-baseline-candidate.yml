@@ -1,0 +1,102 @@
+name: Performance Baseline Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Full commit SHA to evaluate; must already be on main"
+        required: true
+        type: string
+      reason:
+        description: "Why this commit should become the new performance baseline"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      RUST_TOOLCHAIN: 1.98.1
+      NODE_VERSION: 24.21.0
+      PNPM_VERSION: 10.17.1
+    steps:
+      - name: Validate full SHA input
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "candidate_sha must be a full lowercase 40-character SHA"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+      - name: Require candidate to be contained in main
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          git fetch origin main --no-tags
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main || { echo "Baseline candidates must already be merged into main."; exit 1; }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Install benchmark dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb strace
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm perf:budget
+      - run: pnpm icons
+      - name: Build candidate release packages
+        run: pnpm tauri build --bundles appimage,deb
+      - name: Start fixed virtual display
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp > /tmp/kmj-xvfb.log 2>&1 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          sleep 2
+      - name: Capture environment and request manifest
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          REQUEST_REASON: ${{ inputs.reason }}
+        run: |
+          mkdir -p baseline-candidate
+          python3 - <<'PY'
+          import json,os,platform,subprocess
+          def sh(c): return subprocess.check_output(c,shell=True,text=True,stderr=subprocess.STDOUT).strip()
+          env={"schema":1,"runner_os":os.getenv("RUNNER_OS"),"runner_arch":os.getenv("RUNNER_ARCH"),"image_os":os.getenv("ImageOS"),"image_version":os.getenv("ImageVersion"),"kernel":platform.release(),"machine":platform.machine(),"cpu_model":next((x.split(":",1)[1].strip() for x in open("/proc/cpuinfo") if x.startswith("model name")),None),"cpu_count":os.cpu_count(),"rustc":sh("rustc --version"),"cargo":sh("cargo --version"),"node":sh("node --version"),"pnpm":sh("pnpm --version"),"python":platform.python_version(),"webkit_package":sh("dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0"),"strace":sh("strace --version | head -1")}
+          req={"schema":1,"candidate_sha":os.environ["CANDIDATE_SHA"],"requested_by":os.environ["GITHUB_ACTOR"],"request_reason":os.environ["REQUEST_REASON"],"candidate_run_id":int(os.environ["GITHUB_RUN_ID"]),"candidate_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),"repository":os.environ["GITHUB_REPOSITORY"]}
+          open("baseline-candidate/environment.json","w").write(json.dumps(env,indent=2)+"\n")
+          open("baseline-candidate/request.json","w").write(json.dumps(req,indent=2)+"\n")
+          PY
+      - name: Measure baseline candidate
+        run: |
+          python3 scripts/perf/linux-harness.py --binary src-tauri/target/release/kmj-desktop-commander --bundle-dir src-tauri/target/release/bundle --output-dir baseline-candidate
+      - name: Enforce absolute release budgets before eligibility
+        run: node scripts/check-performance-budgets.mjs metrics baseline-candidate/metrics.json
+      - name: Seal candidate evidence
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path("baseline-candidate")
+          files=["environment.json","request.json","metrics.json","samples.json","network.strace"]
+          hashes={p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in files}
+          (root/"evidence-sha256.json").write_text(json.dumps({"schema":1,"sha256":hashes},indent=2)+"\n")
+          PY
+      - name: Upload immutable baseline-candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-refresh-candidate-${{ github.run_id }}
+          path: |
+            baseline-candidate/
+            /tmp/kmj-xvfb.log
+          if-no-files-found: error
+          retention-days: 90
