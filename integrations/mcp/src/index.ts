@@ -10,6 +10,8 @@ const profile = z.object({
   projectRoot: z.string().min(1).max(512).regex(/^\/[A-Za-z0-9/._-]+$/),
 });
 
+const relativePath = z.string().min(1).max(384).regex(/^[A-Za-z0-9/._-]+$/).refine((value) => !value.startsWith("-") && !value.split("/").includes(".."), "Unsafe relative path");
+const serviceName = z.string().min(1).max(128).regex(/^[A-Za-z0-9@_.-]+$/);
 const gate = z.enum(["git_diff_check", "php_test", "frontend_typecheck", "frontend_build", "rust_test"]);
 type Gate = z.infer<typeof gate>;
 
@@ -77,6 +79,38 @@ function createServer() {
     inputSchema: profile.extend({ gate }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   }, async ({ gate: selected, ...input }) => result(await ssh(input, commands[selected])));
+
+  server.registerTool("commander_read_project_file", {
+    title: "Read project file",
+    description: "Read up to the first 400 lines of a validated relative file inside the configured project root.",
+    inputSchema: profile.extend({ path: relativePath }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async ({ path, ...input }) => result(await ssh(input, `sed -n '1,400p' -- ./${path}`)));
+
+  server.registerTool("commander_write_project_file", {
+    title: "Write project file",
+    description: "Atomically replace one validated file inside the project root. This is a reversible project-workspace operation; no sudo is used.",
+    inputSchema: profile.extend({ path: relativePath, content: z.string().max(1048576) }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async ({ path, content, ...input }) => {
+    const encoded = Buffer.from(content, "utf8").toString("base64");
+    return result(await ssh(input, `umask 077; mkdir -p -- ./$(dirname -- ${path}); printf '%s' '${encoded}' | base64 -d > ./${path}.kmj-tmp && mv -- ./${path}.kmj-tmp ./${path}`));
+  });
+
+  server.registerTool("commander_service_control", {
+    title: "Control system service",
+    description: "Inspect or restart a validated systemd service. Restart requires explicit approval and passwordless sudo on the customer-controlled server.",
+    inputSchema: profile.extend({ service: serviceName, action: z.enum(["status", "restart"]), approved: z.boolean().default(false) }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async ({ service, action, approved, ...input }) => {
+    if (action === "restart" && !approved) {
+      return { content: [{ type: "text" as const, text: "DENIED: service restart requires explicit approval." }], isError: true };
+    }
+    const command = action === "status"
+      ? `systemctl --no-pager --full status ${service} || true`
+      : `sudo -n systemctl restart ${service} && systemctl is-active ${service}`;
+    return result(await ssh(input, command));
+  });
 
   return server;
 }
