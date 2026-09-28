@@ -48,8 +48,15 @@ fn verify_entitlement(
     artifact: SignedEntitlement,
     public_key: String,
     device_id: String,
+    device_public_key_fingerprint: String,
 ) -> Result<VerifiedEntitlement, String> {
-    entitlement::verify(&artifact, &public_key, &device_id, entitlement::now_secs())
+    entitlement::verify(
+        &artifact,
+        &public_key,
+        &device_id,
+        &device_public_key_fingerprint,
+        entitlement::now_secs(),
+    )
 }
 
 #[tauri::command]
