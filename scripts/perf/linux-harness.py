@@ -43,10 +43,11 @@ def stop(p):
         except ProcessLookupError:pass
         p.wait(timeout=3)
 def env(root):
-    e=os.environ.copy();e.update({"KMJ_PERF_HARNESS":"1","XDG_DATA_HOME":str(root/"data"),"XDG_CONFIG_HOME":str(root/"config"),"XDG_CACHE_HOME":str(root/"cache")});return e
+    e=os.environ.copy();e.update({"KMJ_PERF_HARNESS":"1","KMJ_PERF_READY_FILE":str(root/"ui-ready"),"XDG_DATA_HOME":str(root/"data"),"XDG_CONFIG_HOME":str(root/"config"),"XDG_CACHE_HOME":str(root/"cache")});return e
 def launch(binary,state,cmd=None):
+    (state/"ui-ready").unlink(missing_ok=True)
     return subprocess.Popen(cmd or [str(binary)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,env=env(state),start_new_session=True,bufsize=1)
-def ready(p,timeout=10):
+def ready(p,state,timeout=15):
     start=time.perf_counter();event=threading.Event();lines=[]
     def read():
         if p.stdout:
@@ -54,26 +55,32 @@ def ready(p,timeout=10):
                 lines.append(line)
                 if READY in line:event.set()
     threading.Thread(target=read,daemon=True).start()
-    if not event.wait(timeout):
-        stop(p);raise RuntimeError("UI readiness marker not observed: "+"".join(lines[-20:]))
-    return (time.perf_counter()-start)*1000
+    deadline=time.monotonic()+timeout
+    ready_file=state/"ui-ready"
+    while time.monotonic()<deadline:
+        if event.is_set() or ready_file.exists():
+            return (time.perf_counter()-start)*1000
+        if p.poll() is not None:
+            break
+        time.sleep(.01)
+    stop(p);raise RuntimeError("UI readiness marker not observed: "+"".join(lines[-20:]))
 def startups(binary,base,count,cold):
     vals=[];state=base/("cold" if cold else "warm");state.mkdir(parents=True,exist_ok=True)
     if not cold:
         p=launch(binary,state)
-        try:ready(p)
+        try:ready(p,state)
         finally:stop(p)
     for _ in range(count):
         if cold:shutil.rmtree(state,ignore_errors=True);state.mkdir(parents=True)
         p=launch(binary,state)
-        try:vals.append(ready(p))
+        try:vals.append(ready(p,state))
         finally:stop(p)
     return vals
 def idle(binary,base,warmup,duration,interval):
     trace=base/"network.strace";state=base/"idle";state.mkdir(parents=True,exist_ok=True)
     p=launch(binary,state,["strace","-f","-ttt","-e","trace=network","-o",str(trace),str(binary)])
     try:
-        ready(p);app_pid=find_executable_descendant(p.pid,binary);time.sleep(warmup);idle_start=time.time();hz=os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+        ready(p,state);app_pid=find_executable_descendant(p.pid,binary);time.sleep(warmup);idle_start=time.time();hz=os.sysconf(os.sysconf_names["SC_CLK_TCK"])
         cpus=[];rss=[];prev_t,_=sample(app_pid);prev=time.monotonic();end=prev+duration
         while time.monotonic()<end:
             time.sleep(interval);now=time.monotonic();ticks,mem=sample(app_pid);elapsed=max(now-prev,.001)
