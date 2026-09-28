@@ -18,6 +18,12 @@ pub struct PolicyDecision {
     reason: String,
 }
 
+impl PolicyDecision {
+    pub fn is_allowed(&self) -> bool {
+        self.allowed
+    }
+}
+
 pub fn classify_operation(operation: &str) -> PolicyDecision {
     match operation {
         "project.inspect" | "git.status" | "quality.read" | "remote.probe" => PolicyDecision {
@@ -70,14 +76,14 @@ mod tests {
     #[test]
     fn inspection_is_allowed() {
         let d = classify_operation("project.inspect");
-        assert!(d.allowed);
+        assert!(d.is_allowed());
         assert!(!d.approval_required);
     }
 
     #[test]
     fn unknown_is_denied() {
         let d = classify_operation("unknown.action");
-        assert!(!d.allowed);
+        assert!(!d.is_allowed());
         assert!(d.approval_required);
     }
 
