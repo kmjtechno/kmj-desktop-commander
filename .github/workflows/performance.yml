@@ -88,7 +88,7 @@ jobs:
             --bundle-dir src-tauri/target/release/bundle \
             --output-dir performance-artifacts/current
       - name: Enforce absolute candidate budgets
-        run: node scripts/check-performance-budgets.mjs metrics performance-artifacts/current/metrics.json
+        run: node scripts/check-performance-budgets.mjs metrics performance-artifacts/current/metrics.json linux_xvfb_software
       - name: Fail on statistically significant regression
         run: |
           python3 scripts/perf/check-regression.py \
