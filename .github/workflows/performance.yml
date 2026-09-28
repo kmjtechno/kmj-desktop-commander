@@ -12,13 +12,22 @@ concurrency:
 jobs:
   linux-x64:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       RUST_TOOLCHAIN: 1.98.1
       NODE_VERSION: 24.21.0
       PNPM_VERSION: 10.17.1
     steps:
       - uses: actions/checkout@v4
+      - name: Read pinned baseline commit
+        id: baseline
+        shell: bash
+        run: echo "sha=$(python3 -c 'import json; print(json.load(open(".github/performance-baseline.json"))["baseline_commit"])')" >> "$GITHUB_OUTPUT"
+      - name: Checkout immutable baseline
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.baseline.outputs.sha }}
+          path: baseline-src
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -32,11 +41,20 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb strace
-      - run: pnpm install --no-frozen-lockfile
+      - name: Install candidate dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Install baseline dependencies
+        working-directory: baseline-src
+        run: pnpm install --no-frozen-lockfile
       - run: pnpm perf:budget
       - run: pnpm icons
-      - name: Build release packages
+      - name: Build candidate release packages
         run: pnpm tauri build --bundles appimage,deb
+      - name: Build pinned baseline release packages
+        working-directory: baseline-src
+        run: |
+          pnpm icons
+          pnpm tauri build --bundles appimage,deb
       - name: Start fixed virtual display
         run: |
           Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp > /tmp/kmj-xvfb.log 2>&1 &
@@ -44,18 +62,37 @@ jobs:
           sleep 2
       - name: Capture environment manifest
         run: |
-          mkdir -p performance-artifacts
+          mkdir -p performance-artifacts/baseline performance-artifacts/current
           python3 - <<'PY'
           import json,os,platform,subprocess
           def sh(c): return subprocess.check_output(c,shell=True,text=True,stderr=subprocess.STDOUT).strip()
           d={"schema":1,"runner_os":os.getenv("RUNNER_OS"),"runner_arch":os.getenv("RUNNER_ARCH"),"image_os":os.getenv("ImageOS"),"image_version":os.getenv("ImageVersion"),"kernel":platform.release(),"machine":platform.machine(),"cpu_model":next((x.split(":",1)[1].strip() for x in open("/proc/cpuinfo") if x.startswith("model name")),None),"cpu_count":os.cpu_count(),"rustc":sh("rustc --version"),"cargo":sh("cargo --version"),"node":sh("node --version"),"pnpm":sh("pnpm --version"),"python":platform.python_version(),"webkit_package":sh("dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0"),"strace":sh("strace --version | head -1")}
           open("performance-artifacts/environment.json","w").write(json.dumps(d,indent=2)+"\n")
           PY
-      - name: Measure startup, idle CPU/RSS/network and package size
+      - name: Measure pinned baseline on same runner
+        working-directory: baseline-src
         run: |
-          python3 scripts/perf/linux-harness.py --binary src-tauri/target/release/kmj-desktop-commander --bundle-dir src-tauri/target/release/bundle --output-dir performance-artifacts
-      - name: Enforce measured budgets
-        run: node scripts/check-performance-budgets.mjs metrics performance-artifacts/metrics.json
+          python3 scripts/perf/linux-harness.py \
+            --binary src-tauri/target/release/kmj-desktop-commander \
+            --bundle-dir src-tauri/target/release/bundle \
+            --output-dir "$GITHUB_WORKSPACE/performance-artifacts/baseline"
+      - name: Measure candidate on same runner
+        run: |
+          python3 scripts/perf/linux-harness.py \
+            --binary src-tauri/target/release/kmj-desktop-commander \
+            --bundle-dir src-tauri/target/release/bundle \
+            --output-dir performance-artifacts/current
+      - name: Enforce absolute candidate budgets
+        run: node scripts/check-performance-budgets.mjs metrics performance-artifacts/current/metrics.json
+      - name: Fail on statistically significant regression
+        run: |
+          python3 scripts/perf/check-regression.py \
+            --baseline-manifest .github/performance-baseline.json \
+            --baseline-metrics performance-artifacts/baseline/metrics.json \
+            --baseline-samples performance-artifacts/baseline/samples.json \
+            --current-metrics performance-artifacts/current/metrics.json \
+            --current-samples performance-artifacts/current/samples.json \
+            --output performance-artifacts/regression-report.json
       - name: Upload machine-readable performance evidence
         if: always()
         uses: actions/upload-artifact@v4
