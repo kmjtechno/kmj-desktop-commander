@@ -3,11 +3,14 @@ import { createServer as createHttpServer } from "node:http";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createServer as createCommanderServer } from "./index.js";
+import { FixedWindowLimiter, ReplayGuard } from "./security.js";
 
 const bind = process.env.KMJ_COMMANDER_BIND ?? "127.0.0.1";
 const port = Number.parseInt(process.env.KMJ_COMMANDER_PORT ?? "8765", 10);
 const token = process.env.KMJ_COMMANDER_BEARER_TOKEN ?? "";
 const allowedHost = process.env.KMJ_COMMANDER_ALLOWED_HOST?.toLowerCase();
+const limiter = new FixedWindowLimiter(60, 60_000);
+const replay = new ReplayGuard(5 * 60_000);
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid KMJ_COMMANDER_PORT.");
 if (token.length < 32) throw new Error("KMJ_COMMANDER_BEARER_TOKEN must be at least 32 characters.");
@@ -53,6 +56,22 @@ const http = createHttpServer((req, res) => {
     });
     res.end(JSON.stringify({ error: "unauthorized" }));
     return;
+  }
+
+  const clientKey = req.socket.remoteAddress ?? "unknown";
+  if (!limiter.allow(clientKey)) {
+    res.writeHead(429, { "content-type": "application/json", "cache-control": "no-store", "retry-after": "60" });
+    res.end(JSON.stringify({ error: "rate_limited" }));
+    return;
+  }
+
+  if (req.method !== "GET") {
+    const operationId = req.headers["x-kmj-operation-id"];
+    if (typeof operationId !== "string" || !replay.accept(operationId)) {
+      res.writeHead(409, { "content-type": "application/json", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: "invalid_or_replayed_operation" }));
+      return;
+    }
   }
 
   void mcp(req, res);
