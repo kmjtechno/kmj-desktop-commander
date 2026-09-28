@@ -1,7 +1,7 @@
 use crate::{
     CLOUDOS_ROOT,
     audit::{self, AuditRecord},
-    auth, execute_named, now_secs, output_hash,
+    auth, devices, execute_named, now_secs, output_hash,
 };
 use axum::{
     Json, Router,
@@ -24,6 +24,7 @@ pub struct GatewayState {
     pub secret: String,
     pub server: String,
     pub audit_path: PathBuf,
+    pub devices_path: PathBuf,
     pub replay: Arc<Mutex<HashMap<String, u64>>>,
 }
 
@@ -91,7 +92,11 @@ fn authenticate(
     if !claims.scopes.iter().any(|candidate| candidate == scope) {
         return Err((StatusCode::FORBIDDEN, "scope denied".into()));
     }
-    Ok(claims)
+    match devices::is_active(&state.devices_path, &claims.device) {
+        Ok(true) => Ok(claims),
+        Ok(false) => Err((StatusCode::FORBIDDEN, "device revoked or not paired".into())),
+        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "device registry unavailable".into())),
+    }
 }
 
 fn scope_for(operation: &str) -> Option<&'static str> {
@@ -165,6 +170,7 @@ async fn execute(
         timestamp: now_secs(),
         principal: claims.sub,
         server: claims.server,
+        device: claims.device,
         operation: request.operation,
         outcome: if success {
             "success".into()
