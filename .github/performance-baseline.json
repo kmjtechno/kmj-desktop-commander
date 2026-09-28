@@ -2,7 +2,7 @@
   "schema": 1,
   "product": "KMJ_DESKTOP_COMMANDER",
   "platform": "linux-x64",
-  "baseline_commit": "b9102879b76592298cc6635900f5abd15d26a649",
+  "baseline_commit": "b210f40d71dfb7a4ef0cdee7cf08cbb0b706b7d4",
   "measurement_contract": {
     "warmup_seconds": 30,
     "idle_window_seconds": 600,
@@ -11,13 +11,38 @@
   },
   "regression_policy": {
     "alpha": 0.01,
-    "idle_cpu_percent": { "relative_p95_increase": 0.20, "absolute_p95_increase": 0.10 },
-    "idle_rss_mib": { "relative_p95_increase": 0.08, "absolute_p95_increase": 8.0 },
-    "startup_warm_ms": { "relative_p95_increase": 0.10, "absolute_p95_increase": 100.0 },
-    "startup_cold_ms": { "relative_p95_increase": 0.10, "absolute_p95_increase": 150.0 },
-    "network_requests": { "allowed_increase": 0 },
-    "stripped_executable_mib": { "relative_increase": 0.03, "absolute_increase": 0.50 },
-    "installer_mib": { "relative_increase": 0.03, "absolute_increase": 0.75 }
+    "idle_cpu_percent": {
+      "relative_p95_increase": 0.2,
+      "absolute_p95_increase": 0.1
+    },
+    "idle_rss_mib": {
+      "relative_p95_increase": 0.08,
+      "absolute_p95_increase": 8
+    },
+    "startup_warm_ms": {
+      "relative_p95_increase": 0.1,
+      "absolute_p95_increase": 100
+    },
+    "startup_cold_ms": {
+      "relative_p95_increase": 0.1,
+      "absolute_p95_increase": 150
+    },
+    "network_requests": {
+      "allowed_increase": 0
+    },
+    "stripped_executable_mib": {
+      "relative_increase": 0.03,
+      "absolute_increase": 0.5
+    },
+    "installer_mib": {
+      "relative_increase": 0.03,
+      "absolute_increase": 0.75
+    }
   },
-  "policy": "CPU, RSS and startup regressions require both one-sided Mann-Whitney significance and a practical p95 delta. Network and binary/package size are deterministic counters and fail on practical increase without a statistical test."
+  "policy": "CPU, RSS and startup regressions require both one-sided Mann-Whitney significance and a practical p95 delta. Network and binary/package size are deterministic counters and fail on practical increase without a statistical test.",
+  "seed_provenance": {
+    "kind": "initial-baseline-before-first-merge",
+    "reason": "Previous seed b9102879b76592298cc6635900f5abd15d26a649 cannot build because its App.tsx contains an invalid literal newline escape. b210f40d71dfb7a4ef0cdee7cf08cbb0b706b7d4 is the first clean head with CI and all native installer matrices verified green.",
+    "future_changes": "signed-reviewed-baseline-refresh-only"
+  }
 }
