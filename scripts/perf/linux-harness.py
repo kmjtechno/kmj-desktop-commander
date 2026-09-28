@@ -112,7 +112,12 @@ def main():
         cpu,rss,net,trace=idle(binary,state,int(mc["warmup_seconds"]),int(mc["idle_window_seconds"]),int(mc["cpu_sample_interval_ms"])/1000)
         bundles=[p for p in pathlib.Path(a.bundle_dir).rglob("*") if p.is_file() and p.suffix.lower() in {".appimage",".deb",".exe",".msi",".dmg"}]
         if not bundles:raise RuntimeError("no installer/package found")
-        metrics={"schema":1,"idle_cpu_p95_percent":round(pct(cpu,.95),4),"idle_cpu_max_percent":round(max(cpu),4),"idle_rss_p95_mib":round(pct(rss,.95),4),"idle_rss_max_mib":round(max(rss),4),"idle_network_requests_10m":net,"startup_warm_p95_ms":round(pct(warm,.95),2),"startup_cold_p95_ms":round(pct(cold,.95),2),"startup_max_ms":round(max(warm+cold),2),"stripped_executable_mib":round(mib(binary),4),"installer_mib":round(max(mib(p) for p in bundles),4)}
+        # The Linux .deb relies on the system WebKit runtime and therefore matches
+        # the product's "installer excluding separately installed system WebView"
+        # size contract. AppImage is intentionally self-contained and is reported
+        # by packaging CI, but must not be compared to that 35 MiB ceiling.
+        installer_candidates=[p for p in bundles if p.suffix.lower()==".deb"] or bundles
+        metrics={"schema":1,"idle_cpu_p95_percent":round(pct(cpu,.95),4),"idle_cpu_max_percent":round(max(cpu),4),"idle_rss_p95_mib":round(pct(rss,.95),4),"idle_rss_max_mib":round(max(rss),4),"idle_network_requests_10m":net,"startup_warm_p95_ms":round(pct(warm,.95),2),"startup_cold_p95_ms":round(pct(cold,.95),2),"startup_max_ms":round(max(warm+cold),2),"stripped_executable_mib":round(mib(binary),4),"installer_mib":round(max(mib(p) for p in installer_candidates),4)}
         (out/"metrics.json").write_text(json.dumps(metrics,indent=2)+"\n");(out/"samples.json").write_text(json.dumps({"warm_startup_ms":warm,"cold_startup_ms":cold,"cpu_percent":cpu,"rss_mib":rss},indent=2)+"\n");shutil.copy2(trace,out/"network.strace");print(json.dumps(metrics,indent=2))
     finally:shutil.rmtree(state,ignore_errors=True)
 if __name__=="__main__":main()
