@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
@@ -56,7 +57,7 @@ function result(value: Awaited<ReturnType<typeof ssh>>) {
   };
 }
 
-function createServer() {
+export function createServer() {
   const server = new McpServer({ name: "KMJ Desktop Commander", version: "0.1.0" });
 
   server.registerTool("commander_project_inspect", {
@@ -115,5 +116,8 @@ function createServer() {
   return server;
 }
 
-void serveStdio(createServer);
-console.error("KMJ Desktop Commander MCP server ready on stdio");
+const invokedPath = process.argv[1];
+if (invokedPath && import.meta.url === pathToFileURL(invokedPath).href) {
+  void serveStdio(createServer);
+  console.error("KMJ Desktop Commander MCP server ready on stdio");
+}
