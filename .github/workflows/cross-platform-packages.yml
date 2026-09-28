@@ -111,7 +111,7 @@ jobs:
           wait "$pid" || true
           hdiutil detach "$mountpoint"
           echo "MACOS_LAUNCH_SMOKE=PASS"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kmj-desktop-commander-${{ matrix.artifact }}
           path: ${{ matrix.path }}
