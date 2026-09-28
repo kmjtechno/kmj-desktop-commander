@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:vps:readonly": "tsx src/readonly.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.1.0",
