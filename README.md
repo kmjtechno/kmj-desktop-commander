@@ -1,6 +1,11 @@
 # KMJ Desktop Commander
 
 <p align="center">
+  <strong>Built by KMJ TECHNO</strong> · Founder / CTO: <strong>Narendra Singh Kushwah</strong><br/>
+  AI-assisted engineering · secure remote operations · developer automation
+</p>
+
+<p align="center">
   <strong>Security-first desktop control for local and remote engineering work.</strong><br/>
   Run approved operations, inspect remote systems, track persistent jobs, and build AI-assisted workflows without handing an AI an unrestricted shell.
 </p>
@@ -173,6 +178,12 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
+
+## About KMJ TECHNO
+
+KMJ Desktop Commander is developed by **KMJ TECHNO**, founded and led by **Narendra Singh Kushwah**. KMJ TECHNO builds AI-native software, developer infrastructure, secure remote-access systems, autonomous engineering tooling, and enterprise-grade digital products.
+
+Learn more at <https://kmjtechno.com>.
 
 ## About
 
