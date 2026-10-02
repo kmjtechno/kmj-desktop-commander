@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { fetchCommanderBootstrap, type CommanderBootstrap } from "./lib/commercial";
 import {
   commander,
@@ -43,6 +44,9 @@ export function App() {
   const refreshJobs = () => commander.jobs().then(setJobs).catch(() => undefined);
 
   useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      invoke("performance_ready").catch(() => undefined);
+    }));
     commander.probe().then(setSystem).catch(() => undefined);
     fetchCommanderBootstrap().then(setCommercial).catch(() => undefined);
     commander.profiles().then((items) => {

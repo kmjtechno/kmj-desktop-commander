@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "runner": "ubuntu-24.04",
+  "architecture": "x86_64",
+  "rust": "1.98.1",
+  "node": "24.21.0",
+  "pnpm": "10.17.1",
+  "python": "3.12",
+  "display": "Xvfb 1920x1080x24",
+  "policy": "Runner OS family and language toolchains are pinned; every run records GitHub ImageOS/ImageVersion, kernel, CPU and package versions in environment.json."
+}
