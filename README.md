@@ -6,6 +6,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/KMJ-TECHNO"><strong>Official KMJ TECHNO GitHub Organization</strong></a>
+</p>
+
+<p align="center">
   <strong>Security-first desktop control for local and remote engineering work.</strong><br/>
   Run approved operations, inspect remote systems, track persistent jobs, and build AI-assisted workflows without handing an AI an unrestricted shell.
 </p>
