@@ -1,0 +1,746 @@
+openapi: 3.1.0
+info:
+  title: KMJ Desktop Commander KSLP-v1 API
+  version: 1.0.0
+  description: |
+    Minimal KMJ Main Platform licensing API for KMJ Desktop Commander.
+    Normal Commander execution is local/customer-controlled and never traverses these endpoints.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: https://kmjtechno.com
+    description: KMJ Main Platform
+tags:
+  - name: Commander Entitlements
+
+paths:
+  /api/v1/commander/entitlements/activate:
+    post:
+      tags: [Commander Entitlements]
+      operationId: activateCommanderEntitlement
+      summary: Activate Commander on a device
+      description: |
+        Creates or idempotently returns a device-bound activation and signed KSLP-v1 entitlement.
+        Requires an authenticated KMJ Main Platform account.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateRequest'
+            examples:
+              freeWindows:
+                value:
+                  protocol: KSLP-v1
+                  product: KMJ_DESKTOP_COMMANDER
+                  device:
+                    device_id: dev_01JCOMMANDER01
+                    install_id: ins_01JINSTALL01
+                    public_key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    public_key_fingerprint: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+                  client:
+                    version: 0.1.0
+                    platform: windows
+                    architecture: x86_64
+                    channel: stable
+                  nonce: YWN0aXZhdGlvbi1ub25jZS0wMUpLTUpURUNIT
+      responses:
+        '201':
+          description: New activation created.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+            Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+            Vary: { $ref: '#/components/headers/VaryAuthorization' }
+            X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntitlementSuccess' }
+              examples:
+                created:
+                  $ref: '#/components/examples/ActivationSuccess'
+        '200':
+          description: Idempotent replay resolved to the existing semantic activation result.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+            Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+            Vary: { $ref: '#/components/headers/VaryAuthorization' }
+            X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntitlementSuccess' }
+              examples:
+                replay:
+                  $ref: '#/components/examples/ActivationSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '426':
+          $ref: '#/components/responses/UpdateRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/commander/entitlements/refresh:
+    post:
+      tags: [Commander Entitlements]
+      operationId: refreshCommanderEntitlement
+      summary: Refresh a device-bound Commander entitlement
+      description: |
+        Refreshes the signed lease after verifying possession of the activation's Ed25519 device key.
+        No interactive Main Platform session is required for routine refresh.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              activeLease:
+                value:
+                  protocol: KSLP-v1
+                  product: KMJ_DESKTOP_COMMANDER
+                  license_id: lic_01JLICENSE01
+                  activation_id: act_01JACTIVATION01
+                  device_id: dev_01JCOMMANDER01
+                  current_token_id: tok_01JOLDTOKEN01
+                  current_sequence: 41
+                  client_version: 0.1.0
+                  nonce: cmVmcmVzaC1ub25jZS0wMUpLTUpURUNIT
+                  device_proof: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      responses:
+        '200':
+          description: Entitlement lease refreshed.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+            Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+            X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntitlementSuccess' }
+              examples:
+                refreshed:
+                  $ref: '#/components/examples/RefreshSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '426':
+          $ref: '#/components/responses/UpdateRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: KMJ Main Platform access token
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 16-128 printable ASCII characters. Reuse is valid only for an identical request.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+        pattern: '^[ -~]{16,128}$'
+      example: cmdr-01J9ZQ3X5Q2Y8V7K6M4N
+
+  headers:
+    NoStoreCacheControl:
+      description: Dynamic entitlement responses must never be cached.
+      schema:
+        type: string
+        const: no-store, private
+    PragmaNoCache:
+      schema:
+        type: string
+        const: no-cache
+    VaryAuthorization:
+      schema:
+        type: string
+        const: Authorization
+    NoSniff:
+      schema:
+        type: string
+        const: nosniff
+    RetryAfter:
+      description: Delay in seconds before a retry.
+      schema:
+        type: integer
+        minimum: 1
+      example: 60
+
+  schemas:
+    Protocol:
+      type: string
+      const: KSLP-v1
+    Product:
+      type: string
+      const: KMJ_DESKTOP_COMMANDER
+    OpaqueId:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[A-Za-z0-9._:-]+$'
+    Base64Url:
+      type: string
+      minLength: 16
+      maxLength: 512
+      pattern: '^[A-Za-z0-9_-]+$'
+    Nonce:
+      type: string
+      minLength: 16
+      maxLength: 128
+      pattern: '^[A-Za-z0-9_-]+$'
+    UnixTime:
+      type: integer
+      minimum: 0
+    SemVer:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: '^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$'
+      example: 0.1.0
+    DeviceFingerprint:
+      type: string
+      pattern: '^sha256:[0-9a-f]{64}$'
+      example: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    Ed25519PublicKey:
+      type: string
+      description: Base64url without padding encoding of exactly 32 Ed25519 public-key bytes.
+      minLength: 43
+      maxLength: 43
+      pattern: '^[A-Za-z0-9_-]{43}$'
+    Ed25519Signature:
+      type: string
+      description: Base64url without padding encoding of exactly 64 Ed25519 signature bytes.
+      minLength: 86
+      maxLength: 86
+      pattern: '^[A-Za-z0-9_-]{86}$'
+
+    DeviceRegistration:
+      type: object
+      additionalProperties: false
+      required: [device_id, install_id, public_key, public_key_fingerprint]
+      properties:
+        device_id:
+          $ref: '#/components/schemas/OpaqueId'
+        install_id:
+          allOf:
+            - $ref: '#/components/schemas/OpaqueId'
+          description: Privacy-preserving random install identifier; never a raw hardware identifier.
+        public_key:
+          $ref: '#/components/schemas/Ed25519PublicKey'
+        public_key_fingerprint:
+          $ref: '#/components/schemas/DeviceFingerprint'
+
+    ClientDescriptor:
+      type: object
+      additionalProperties: false
+      required: [version, platform, architecture, channel]
+      properties:
+        version:
+          $ref: '#/components/schemas/SemVer'
+        platform:
+          type: string
+          enum: [windows, linux, macos]
+        architecture:
+          type: string
+          enum: [x86_64, aarch64]
+        channel:
+          type: string
+          enum: [stable, beta]
+
+    ActivateRequest:
+      type: object
+      additionalProperties: false
+      required: [protocol, product, device, client, nonce]
+      properties:
+        protocol:
+          $ref: '#/components/schemas/Protocol'
+        product:
+          $ref: '#/components/schemas/Product'
+        device:
+          $ref: '#/components/schemas/DeviceRegistration'
+        client:
+          $ref: '#/components/schemas/ClientDescriptor'
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - protocol
+        - product
+        - license_id
+        - activation_id
+        - device_id
+        - current_token_id
+        - current_sequence
+        - client_version
+        - nonce
+        - device_proof
+      properties:
+        protocol:
+          $ref: '#/components/schemas/Protocol'
+        product:
+          $ref: '#/components/schemas/Product'
+        license_id:
+          $ref: '#/components/schemas/OpaqueId'
+        activation_id:
+          $ref: '#/components/schemas/OpaqueId'
+        device_id:
+          $ref: '#/components/schemas/OpaqueId'
+        current_token_id:
+          $ref: '#/components/schemas/OpaqueId'
+        current_sequence:
+          type: integer
+          minimum: 1
+        client_version:
+          $ref: '#/components/schemas/SemVer'
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+        device_proof:
+          $ref: '#/components/schemas/Ed25519Signature'
+
+    EntitlementPlan:
+      type: string
+      enum: [free, pro, team, enterprise, custom]
+    CommercialState:
+      type: string
+      enum: [ACTIVE, RENEWAL_DUE, GRACE, RESTRICTED]
+    FeatureId:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: '^[a-z][a-z0-9_]*$'
+
+    EntitlementLimits:
+      type: object
+      additionalProperties: false
+      required: [server_profiles, devices, autopilot_runs_per_month]
+      properties:
+        server_profiles:
+          type: integer
+          minimum: 0
+        devices:
+          type: integer
+          minimum: 0
+        autopilot_runs_per_month:
+          type: integer
+          minimum: 0
+
+    EntitlementClaims:
+      type: object
+      description: |
+        Logical schema of the canonical UTF-8 JSON encoded into SignedEntitlement.payload.
+        Signature verification is performed over the exact ASCII payload string before decoding these claims.
+      additionalProperties: false
+      required:
+        - protocol
+        - license_id
+        - customer_id
+        - product
+        - plan
+        - activation_id
+        - device_id
+        - device_public_key_fingerprint
+        - enabled_features
+        - limits
+        - commercial_state
+        - issued_at
+        - not_before
+        - lease_expiry
+        - sequence
+        - kid
+        - token_id
+        - nonce
+      properties:
+        protocol:
+          $ref: '#/components/schemas/Protocol'
+        license_id:
+          $ref: '#/components/schemas/OpaqueId'
+        customer_id:
+          $ref: '#/components/schemas/OpaqueId'
+        product:
+          $ref: '#/components/schemas/Product'
+        plan:
+          $ref: '#/components/schemas/EntitlementPlan'
+        activation_id:
+          $ref: '#/components/schemas/OpaqueId'
+        device_id:
+          $ref: '#/components/schemas/OpaqueId'
+        device_public_key_fingerprint:
+          $ref: '#/components/schemas/DeviceFingerprint'
+        enabled_features:
+          type: array
+          uniqueItems: true
+          maxItems: 128
+          items:
+            $ref: '#/components/schemas/FeatureId'
+        limits:
+          $ref: '#/components/schemas/EntitlementLimits'
+        commercial_state:
+          $ref: '#/components/schemas/CommercialState'
+        issued_at:
+          $ref: '#/components/schemas/UnixTime'
+        not_before:
+          $ref: '#/components/schemas/UnixTime'
+        lease_expiry:
+          $ref: '#/components/schemas/UnixTime'
+        sequence:
+          type: integer
+          minimum: 1
+        kid:
+          $ref: '#/components/schemas/OpaqueId'
+        token_id:
+          $ref: '#/components/schemas/OpaqueId'
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+      examples:
+        - protocol: KSLP-v1
+          license_id: lic_01JLICENSE01
+          customer_id: cus_01JCUSTOMER01
+          product: KMJ_DESKTOP_COMMANDER
+          plan: free
+          activation_id: act_01JACTIVATION01
+          device_id: dev_01JCOMMANDER01
+          device_public_key_fingerprint: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          enabled_features: [manual_operations]
+          limits:
+            server_profiles: 3
+            devices: 1
+            autopilot_runs_per_month: 50
+          commercial_state: ACTIVE
+          issued_at: 1790627000
+          not_before: 1790627000
+          lease_expiry: 1791231800
+          sequence: 42
+          kid: kslp-ent-2026-01
+          token_id: tok_01JTOKEN01
+          nonce: ZW50aXRsZW1lbnQtbm9uY2UtMDFKS01K
+
+    SignedEntitlement:
+      type: object
+      additionalProperties: false
+      required: [payload, signature]
+      properties:
+        payload:
+          type: string
+          minLength: 16
+          maxLength: 12288
+          pattern: '^[A-Za-z0-9_-]+$'
+          description: Base64url without padding of canonical UTF-8 EntitlementClaims JSON.
+        signature:
+          $ref: '#/components/schemas/Ed25519Signature'
+
+    EntitlementSuccess:
+      type: object
+      additionalProperties: false
+      required: [ok, activation_id, entitlement, lease_expiry, next_refresh_not_before, server_time]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        activation_id:
+          $ref: '#/components/schemas/OpaqueId'
+        entitlement:
+          $ref: '#/components/schemas/SignedEntitlement'
+        lease_expiry:
+          $ref: '#/components/schemas/UnixTime'
+        next_refresh_not_before:
+          $ref: '#/components/schemas/UnixTime'
+        server_time:
+          $ref: '#/components/schemas/UnixTime'
+
+    ErrorCode:
+      type: string
+      enum:
+        - KSLP_INVALID_REQUEST
+        - KSLP_PROTOCOL_UNSUPPORTED
+        - KSLP_PRODUCT_MISMATCH
+        - KSLP_INVALID_DEVICE_PROOF
+        - KSLP_AUTH_REQUIRED
+        - KSLP_ACCOUNT_RESTRICTED
+        - KSLP_LICENSE_REVOKED
+        - KSLP_ACTIVATION_REVOKED
+        - KSLP_DEVICE_MISMATCH
+        - KSLP_DEVICE_LIMIT_REACHED
+        - KSLP_LICENSE_NOT_FOUND
+        - KSLP_ACTIVATION_NOT_FOUND
+        - KSLP_REPLAY_DETECTED
+        - KSLP_IDEMPOTENCY_CONFLICT
+        - KSLP_TRANSFER_REQUIRED
+        - KSLP_CLIENT_UPDATE_REQUIRED
+        - KSLP_RATE_LIMITED
+        - KSLP_INTERNAL_ERROR
+        - KSLP_TEMPORARILY_UNAVAILABLE
+
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable, retry_after_seconds]
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          minLength: 1
+          maxLength: 256
+        retryable:
+          type: boolean
+        retry_after_seconds:
+          type: [integer, 'null']
+          minimum: 1
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [ok, error, server_time]
+      properties:
+        ok:
+          type: boolean
+          const: false
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+        server_time:
+          $ref: '#/components/schemas/UnixTime'
+
+  examples:
+    ActivationSuccess:
+      value:
+        ok: true
+        activation_id: act_01JACTIVATION01
+        entitlement:
+          payload: ZXhhbXBsZS1jYW5vbmljYWwtZW50aXRsZW1lbnQtcGF5bG9hZA
+          signature: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        lease_expiry: 1791231800
+        next_refresh_not_before: 1791145400
+        server_time: 1790627000
+    RefreshSuccess:
+      value:
+        ok: true
+        activation_id: act_01JACTIVATION01
+        entitlement:
+          payload: ZXhhbXBsZS1uZXctY2Fub25pY2FsLWVudGl0bGVtZW50LXBheWxvYWQ
+          signature: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        lease_expiry: 1791836600
+        next_refresh_not_before: 1791750200
+        server_time: 1791231800
+
+  responses:
+    BadRequest:
+      description: Invalid request, protocol/product mismatch, or invalid device proof.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          examples:
+            invalidRequest:
+              value:
+                ok: false
+                error: { code: KSLP_INVALID_REQUEST, message: Invalid request., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            unsupportedProtocol:
+              value:
+                ok: false
+                error: { code: KSLP_PROTOCOL_UNSUPPORTED, message: Unsupported protocol., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            productMismatch:
+              value:
+                ok: false
+                error: { code: KSLP_PRODUCT_MISMATCH, message: Product mismatch., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            invalidDeviceProof:
+              value:
+                ok: false
+                error: { code: KSLP_INVALID_DEVICE_PROOF, message: Invalid device proof., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+
+    AuthRequired:
+      description: Main Platform authentication is required for activation.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        Vary: { $ref: '#/components/headers/VaryAuthorization' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            ok: false
+            error: { code: KSLP_AUTH_REQUIRED, message: Authentication required., retryable: false, retry_after_seconds: null }
+            server_time: 1790627000
+
+    Forbidden:
+      description: Account/license/activation/device policy denies the operation.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          examples:
+            accountRestricted:
+              value:
+                ok: false
+                error: { code: KSLP_ACCOUNT_RESTRICTED, message: Account is restricted., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            licenseRevoked:
+              value:
+                ok: false
+                error: { code: KSLP_LICENSE_REVOKED, message: License is revoked., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            activationRevoked:
+              value:
+                ok: false
+                error: { code: KSLP_ACTIVATION_REVOKED, message: Activation is revoked., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            deviceMismatch:
+              value:
+                ok: false
+                error: { code: KSLP_DEVICE_MISMATCH, message: Device binding mismatch., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            deviceLimit:
+              value:
+                ok: false
+                error: { code: KSLP_DEVICE_LIMIT_REACHED, message: Device limit reached., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+
+    NotFound:
+      description: License or activation is unavailable. May intentionally hide ownership details.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          examples:
+            license:
+              value:
+                ok: false
+                error: { code: KSLP_LICENSE_NOT_FOUND, message: License not found., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            activation:
+              value:
+                ok: false
+                error: { code: KSLP_ACTIVATION_NOT_FOUND, message: Activation not found., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+
+    Conflict:
+      description: Replay, idempotency conflict, or explicit transfer requirement.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          examples:
+            replay:
+              value:
+                ok: false
+                error: { code: KSLP_REPLAY_DETECTED, message: Replay detected., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            idempotency:
+              value:
+                ok: false
+                error: { code: KSLP_IDEMPOTENCY_CONFLICT, message: Idempotency key conflicts with an earlier request., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+            transfer:
+              value:
+                ok: false
+                error: { code: KSLP_TRANSFER_REQUIRED, message: Device transfer is required., retryable: false, retry_after_seconds: null }
+                server_time: 1790627000
+
+    UpdateRequired:
+      description: Commander client is below the minimum security-supported version.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            ok: false
+            error: { code: KSLP_CLIENT_UPDATE_REQUIRED, message: Client update required., retryable: false, retry_after_seconds: null }
+            server_time: 1790627000
+
+    RateLimited:
+      description: Bounded licensing rate limit exceeded.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            ok: false
+            error: { code: KSLP_RATE_LIMITED, message: Too many licensing requests., retryable: true, retry_after_seconds: 60 }
+            server_time: 1790627000
+
+    InternalError:
+      description: Safe generic internal error.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            ok: false
+            error: { code: KSLP_INTERNAL_ERROR, message: Internal licensing error., retryable: true, retry_after_seconds: null }
+            server_time: 1790627000
+
+    Unavailable:
+      description: Licensing control plane is temporarily unavailable.
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStoreCacheControl' }
+        Pragma: { $ref: '#/components/headers/PragmaNoCache' }
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+        X-Content-Type-Options: { $ref: '#/components/headers/NoSniff' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            ok: false
+            error: { code: KSLP_TEMPORARILY_UNAVAILABLE, message: Licensing is temporarily unavailable., retryable: true, retry_after_seconds: 300 }
+            server_time: 1790627000

@@ -1,0 +1,187 @@
+name: Approve Performance Baseline Refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: "Successful Performance Baseline Candidate workflow run ID"
+        required: true
+        type: string
+      approval_reason:
+        description: "Human review/approval reason"
+        required: true
+        type: string
+      approval:
+        description: "Type APPROVE BASELINE REFRESH"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  approve:
+    runs-on: ubuntu-24.04
+    environment: performance-baseline-approval
+    steps:
+      - name: Require explicit approval phrase
+        env:
+          APPROVAL: ${{ inputs.approval }}
+        run: test "$APPROVAL" = "APPROVE BASELINE REFRESH"
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Validate successful candidate run
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.candidate_run_id }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "candidate_run_id must be numeric"; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > /tmp/run.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          r=json.load(open("/tmp/run.json"))
+          if r.get("conclusion")!="success": raise SystemExit("candidate run is not successful")
+          if r.get("event")!="workflow_dispatch": raise SystemExit("candidate run was not manually requested")
+          if r.get("path")!=".github/workflows/performance-baseline-candidate.yml": raise SystemExit("wrong source workflow")
+          print("run_url="+r["html_url"])
+          print("run_actor="+r["actor"]["login"])
+          PY
+      - name: Download and verify sealed candidate evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.candidate_run_id }}
+        run: |
+          mkdir -p /tmp/baseline-evidence
+          gh run download "$RUN_ID" -n "baseline-refresh-candidate-$RUN_ID" -D /tmp/baseline-evidence
+          python3 - <<'PY'
+          import hashlib,json,pathlib,subprocess
+          root=pathlib.Path("/tmp/baseline-evidence")
+          seal=json.load(open(root/"evidence-sha256.json"))["sha256"]
+          for name,want in seal.items():
+              got=hashlib.sha256((root/name).read_bytes()).hexdigest()
+              if got!=want: raise SystemExit(f"evidence hash mismatch: {name}")
+          req=json.load(open(root/"request.json"))
+          sha=req["candidate_sha"]
+          subprocess.run(["git","fetch","origin","main","--no-tags"],check=True)
+          subprocess.run(["git","merge-base","--is-ancestor",sha,"origin/main"],check=True)
+          pathlib.Path("/tmp/candidate_sha").write_text(sha)
+          PY
+      - name: Prepare canonical baseline audit manifest
+        env:
+          APPROVAL_REASON: ${{ inputs.approval_reason }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          CANDIDATE_RUN_URL: ${{ steps.verify.outputs.run_url }}
+          CANDIDATE_RUN_ACTOR: ${{ steps.verify.outputs.run_actor }}
+        run: |
+          CANDIDATE_SHA="$(cat /tmp/candidate_sha)"
+          SHORT="${CANDIDATE_SHA:0:12}"
+          BRANCH="perf/baseline-refresh-$SHORT-$CANDIDATE_RUN_ID"
+          git checkout -b "$BRANCH"
+          python3 - <<'PY'
+          import datetime,json,os,pathlib
+          manifest_path=pathlib.Path(".github/performance-baseline.json")
+          baseline=json.loads(manifest_path.read_text())
+          previous=baseline["baseline_commit"]
+          new=pathlib.Path("/tmp/candidate_sha").read_text().strip()
+          if previous==new: raise SystemExit("candidate is already the pinned baseline")
+          baseline["baseline_commit"]=new
+          manifest_path.write_text(json.dumps(baseline,indent=2)+"\n")
+          ev=pathlib.Path("/tmp/baseline-evidence")
+          request=json.load(open(ev/"request.json"))
+          now=datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
+          audit={
+            "schema":2,
+            "manifest_type":"KMJ_PERFORMANCE_BASELINE_REFRESH",
+            "signature_scheme":"github-oidc-sigstore-attestation",
+            "repository":os.environ["GITHUB_REPOSITORY"],
+            "changed_at_utc":now,
+            "previous_baseline_commit":previous,
+            "new_baseline_commit":new,
+            "source_run":{
+              "id":int(os.environ["CANDIDATE_RUN_ID"]),
+              "attempt":int(request["candidate_run_attempt"]),
+              "url":os.environ["CANDIDATE_RUN_URL"],
+              "requested_by":request["requested_by"],
+              "request_reason":request["request_reason"]
+            },
+            "approval":{
+              "approved_by":os.environ["GITHUB_ACTOR"],
+              "approval_run_id":int(os.environ["GITHUB_RUN_ID"]),
+              "approval_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "reason":os.environ["APPROVAL_REASON"],
+              "environment":"performance-baseline-approval"
+            },
+            "evidence_sha256":json.load(open(ev/"evidence-sha256.json"))["sha256"],
+            "accepted_metrics":json.load(open(ev/"metrics.json"))
+          }
+          out=pathlib.Path(".github/performance-baseline-history");out.mkdir(parents=True,exist_ok=True)
+          name=now.replace(":","-")+"-"+new[:12]+".json"
+          canonical=json.dumps(audit,sort_keys=True,separators=(",",":"),ensure_ascii=False)+"\n"
+          (out/name).write_text(canonical)
+          pathlib.Path("/tmp/baseline-change-audit.json").write_text(canonical)
+          pathlib.Path("/tmp/audit_filename").write_text(name)
+          PY
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+      - name: Cryptographically attest canonical audit manifest
+        id: audit_attest
+        uses: actions/attest@v4
+        with:
+          subject-path: /tmp/baseline-change-audit.json
+      - name: Verify signed audit manifest before proposing baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify /tmp/baseline-change-audit.json --repo "$GITHUB_REPOSITORY"
+      - name: Commit signed manifest and Sigstore bundle
+        run: |
+          AUDIT_NAME="$(cat /tmp/audit_filename)"
+          BUNDLE_PATH="${{ steps.audit_attest.outputs.bundle-path }}"
+          test -s "$BUNDLE_PATH"
+          SIDECAR=".github/performance-baseline-history/${AUDIT_NAME%.json}.sigstore.json"
+          cp "$BUNDLE_PATH" "$SIDECAR"
+          cp "$BUNDLE_PATH" /tmp/baseline-change-audit.sigstore.json
+          printf '%s\n' "${{ steps.audit_attest.outputs.attestation-id }}" > /tmp/baseline-change-attestation-id.txt
+          printf '%s\n' "${{ steps.audit_attest.outputs.attestation-url }}" > /tmp/baseline-change-attestation-url.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/performance-baseline.json .github/performance-baseline-history/
+          git commit -m "perf: propose signed baseline refresh to $(cat /tmp/candidate_sha | cut -c1-12)"
+          git push origin "$BRANCH"
+      - name: Upload auditable baseline-change artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-change-audit-${{ github.run_id }}
+          path: |
+            /tmp/baseline-change-audit.json
+            /tmp/baseline-change-audit.sigstore.json
+            /tmp/baseline-change-attestation-id.txt
+            /tmp/baseline-change-attestation-url.txt
+            /tmp/baseline-evidence/evidence-sha256.json
+            /tmp/baseline-evidence/metrics.json
+            /tmp/baseline-evidence/environment.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Open review-required baseline change PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          APPROVAL_REASON: ${{ inputs.approval_reason }}
+        run: |
+          CANDIDATE_SHA="$(cat /tmp/candidate_sha)"
+          cat > /tmp/pr-body.md <<EOF
+          Baseline refresh proposal generated only after successful benchmark run #$CANDIDATE_RUN_ID and explicit approval by @$GITHUB_ACTOR.
+
+          Approval reason: $APPROVAL_REASON
+
+          The committed canonical audit manifest contains the previous/new baseline SHA, source run, approver identity, accepted metrics, and SHA-256 hashes of measured evidence. Its adjacent .sigstore.json bundle is a GitHub OIDC/Sigstore cryptographic attestation of the exact manifest bytes. Merge only after normal repository review and required checks pass.
+          EOF
+          gh pr create --base main --head "$BRANCH" \
+            --title "perf: refresh pinned baseline to ${CANDIDATE_SHA:0:12}" \
+            --body-file /tmp/pr-body.md

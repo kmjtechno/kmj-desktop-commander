@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "product": "KMJ_DESKTOP_COMMANDER",
+  "platform": "linux-x64",
+  "baseline_commit": "664373f1a9853be77f5fbd098718b8349d9b4c84",
+  "measurement_contract": {
+    "warmup_seconds": 30,
+    "idle_window_seconds": 600,
+    "startup_samples": 20,
+    "cpu_sample_interval_ms": 1000
+  },
+  "regression_policy": {
+    "alpha": 0.01,
+    "idle_cpu_percent": {
+      "relative_p95_increase": 0.2,
+      "absolute_p95_increase": 0.1
+    },
+    "idle_rss_mib": {
+      "relative_p95_increase": 0.08,
+      "absolute_p95_increase": 8
+    },
+    "startup_warm_ms": {
+      "relative_p95_increase": 0.1,
+      "absolute_p95_increase": 100
+    },
+    "startup_cold_ms": {
+      "relative_p95_increase": 0.1,
+      "absolute_p95_increase": 150
+    },
+    "network_requests": {
+      "allowed_increase": 0
+    },
+    "stripped_executable_mib": {
+      "relative_increase": 0.03,
+      "absolute_increase": 0.5
+    },
+    "installer_mib": {
+      "relative_increase": 0.03,
+      "absolute_increase": 0.75
+    }
+  },
+  "policy": "CPU, RSS and startup regressions require both one-sided Mann-Whitney significance and a practical p95 delta. Network and binary/package size are deterministic counters and fail on practical increase without a statistical test.",
+  "seed_provenance": {
+    "kind": "initial-baseline-before-first-merge",
+    "reason": "Initial baseline is the first buildable feature head that emits deterministic readiness from the completed WebView page-load lifecycle, with the frontend callback retained as a secondary signal.",
+    "future_changes": "signed-reviewed-baseline-refresh-only"
+  }
+}

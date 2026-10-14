@@ -1,8 +1,10 @@
+mod entitlement;
 mod jobs;
 mod policy;
 mod profiles;
 mod runner;
 
+use entitlement::{SignedEntitlement, VerifiedEntitlement};
 use jobs::{JobRecord, JobStore};
 use policy::{PolicyDecision, classify_operation};
 use profiles::{ProfileStore, SavedProfile};
@@ -19,6 +21,20 @@ struct SystemProbe {
     policy_mode: &'static str,
 }
 
+fn signal_performance_ready() {
+    if std::env::var("KMJ_PERF_HARNESS").as_deref() == Ok("1") {
+        if let Ok(path) = std::env::var("KMJ_PERF_READY_FILE") {
+            let _ = std::fs::write(path, b"ready\n");
+        }
+        println!("KMJ_PERF_UI_READY");
+    }
+}
+
+#[tauri::command]
+fn performance_ready() {
+    signal_performance_ready();
+}
+
 #[tauri::command]
 fn system_probe() -> SystemProbe {
     SystemProbe {
@@ -32,6 +48,22 @@ fn system_probe() -> SystemProbe {
 #[tauri::command]
 fn evaluate_operation(operation: String) -> PolicyDecision {
     classify_operation(&operation)
+}
+
+#[tauri::command]
+fn verify_entitlement(
+    artifact: SignedEntitlement,
+    public_key: String,
+    device_id: String,
+    device_public_key_fingerprint: String,
+) -> Result<VerifiedEntitlement, String> {
+    entitlement::verify(
+        &artifact,
+        &public_key,
+        &device_id,
+        &device_public_key_fingerprint,
+        entitlement::now_secs(),
+    )
 }
 
 #[tauri::command]
@@ -111,6 +143,9 @@ fn summarize(output: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .on_page_load(|_webview, _payload| {
+            signal_performance_ready();
+        })
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             app.manage(Mutex::new(JobStore::load(data_dir.join("jobs.json"))));
@@ -120,8 +155,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            performance_ready,
             system_probe,
             evaluate_operation,
+            verify_entitlement,
             list_jobs,
             list_profiles,
             save_profile,

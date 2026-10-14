@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "product": "KMJ_DESKTOP_COMMANDER",
+  "measurement": {
+    "warmup_seconds": 30,
+    "idle_window_seconds": 600,
+    "startup_samples": 20,
+    "cpu_sample_interval_ms": 1000
+  },
+  "budgets": {
+    "idle_cpu_percent": {
+      "p95_max": 0.5,
+      "hard_max": 1
+    },
+    "idle_rss_mib": {
+      "p95_max": 160,
+      "hard_max": 180
+    },
+    "idle_network_requests": {
+      "max_per_10_minutes": 0
+    },
+    "startup_ms": {
+      "warm_p95_max": 1500,
+      "cold_p95_max": 2500,
+      "hard_max": 3500
+    },
+    "binary_size_mib": {
+      "stripped_executable_max": 20,
+      "installer_max": 35
+    },
+    "frontend_dist_mib": {
+      "raw_max": 2
+    }
+  },
+  "ci_profiles": {
+    "linux_xvfb_software": {
+      "description": "Synthetic GitHub Actions/Xvfb WebKitGTK software-render safety ceilings. Product targets remain unchanged; statistically significant baseline regressions are enforced separately.",
+      "budgets": {
+        "idle_cpu_percent": {
+          "p95_max": 2.25,
+          "hard_max": 5
+        },
+        "idle_rss_mib": {
+          "p95_max": 425,
+          "hard_max": 450
+        }
+      }
+    }
+  }
+}

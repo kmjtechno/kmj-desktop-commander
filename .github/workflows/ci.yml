@@ -25,6 +25,12 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm build
+      - name: Validate performance budgets
+        run: pnpm perf:budget
+      - name: Compile performance harnesses
+        run: python3 -m py_compile scripts/perf/*.py
+      - name: Enforce frontend size budget
+        run: pnpm perf:frontend
 
   rust:
     runs-on: ubuntu-latest
